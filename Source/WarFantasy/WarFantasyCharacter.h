@@ -26,36 +26,8 @@ class AWarFantasyCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FirstPersonCameraComponent;
 
-public:
-	AWarFantasyCharacter();
-
 protected:
 	virtual void BeginPlay();
-
-public:
-	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
-		float BaseTurnRate;
-
-	/** Base look up/down rate, in deg/sec. Other scaling may affect final rate. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
-		float BaseLookUpRate;
-
-	/** Base look up/down rate, in deg/sec. Other scaling may affect final rate. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Gameplay)
-		float sprintRate = 1.5;
-
-	/** Gun muzzle's offset from the characters location */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
-		FVector GunOffset;
-
-	/** Projectile class to spawn */
-	UPROPERTY(EditDefaultsOnly, Category = Projectile)
-		TSubclassOf<class AWarFantasyProjectile> ProjectileClass;
-
-	bool bReloading = false, bSprinting = false, bAiming = false;
-
-protected:
 
 	/** Sound to play each time we fire */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Audio)
@@ -104,14 +76,26 @@ protected:
 	/** Fires a projectile. */
 	void OnFire();
 
-	/** Reloads the weapon. */
+	/** Initiates the sprint movement and animations. */
 	void StartSprint();
 
-	/** Reloads the weapon. */
+	/** Cease the sprint movement and animations. */
 	void StopSprint();
-	
+
 	/** Reloads the weapon. */
 	void OnReload();
+
+	/** Initiate ADS. */
+	void OnLookDownSights();
+
+	/** Cease ADS. */
+	void OnLookAwayFromSights();
+
+	/** Enabled player crouch */
+	void OnCrouchDown();
+
+	/** Disable player crouch */
+	void OnStandUp();
 
 	/** Handles moving forward/backward */
 	void MoveForward(float Val);
@@ -131,12 +115,44 @@ protected:
 	 */
 	void LookUpAtRate(float Rate);
 	
-protected:
 	// APawn interface
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 	// End of APawn interface
 
+	bool bCrouched = false;
+
 public:
+	AWarFantasyCharacter();
+
+	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+		float BaseTurnRate;
+
+	/** Base look up/down rate, in deg/sec. Other scaling may affect final rate. */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
+		float BaseLookUpRate;
+
+	const float sprintSpeed = 900.f;
+	const float walkSpeed = 600.f;
+	const float crouchSpeed = 300.f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Gameplay)
+		bool bReloading = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Gameplay)
+		bool bSprinting = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Gameplay)
+		bool bAiming = false;
+
+	/** Gun muzzle's offset from the characters location */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Gameplay)
+		FVector GunOffset;
+
+	/** Projectile class to spawn */
+	UPROPERTY(EditDefaultsOnly, Category = Projectile)
+		TSubclassOf<class AWarFantasyProjectile> ProjectileClass;
+
 	/** Returns Mesh1P subobject **/
 	FORCEINLINE class USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }
 	/** Returns FirstPersonCameraComponent subobject **/

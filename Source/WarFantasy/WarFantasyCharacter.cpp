@@ -23,7 +23,7 @@ AWarFantasyCharacter::AWarFantasyCharacter()
 	// Create a CameraComponent	
 	FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
 	FirstPersonCameraComponent->SetupAttachment(GetCapsuleComponent());
-	FirstPersonCameraComponent->RelativeLocation = FVector(-39.56f, 1.75f, 64.f); // Position the camera
+	FirstPersonCameraComponent->RelativeLocation = FVector(0.f, 0.f, 64.f); // Position the camera
 	FirstPersonCameraComponent->bUsePawnControlRotation = true;
 
 	// Create a mesh component that will be used when being viewed from a '1st person' view (when controlling this pawn)
@@ -32,7 +32,7 @@ AWarFantasyCharacter::AWarFantasyCharacter()
 	Mesh1P->SetupAttachment(FirstPersonCameraComponent);
 	Mesh1P->bCastDynamicShadow = false;
 	Mesh1P->CastShadow = false;
-	Mesh1P->RelativeRotation = FRotator(0.f, -90.f, 0.f);  //TODO reposition gun
+	Mesh1P->RelativeRotation = FRotator(0.f, -90.f, 0.f);  //TODO shrink and reposition gun
 	Mesh1P->RelativeLocation = FVector(0.f, 0.f, -165.5f);
 
 	// Create a gun mesh component
@@ -63,7 +63,7 @@ void AWarFantasyCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	//Attach gun mesh component to Skeleton, doing it here because the skeleton is not yet created in the constructor
-	FP_Gun->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("GripPoint"));
+	FP_Gun->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("WeaponSocket"));
 
 	Mesh1P->SetHiddenInGame(false, true);
 	
@@ -86,6 +86,12 @@ void AWarFantasyCharacter::SetupPlayerInputComponent(class UInputComponent* Play
 	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AWarFantasyCharacter::OnFire);
 	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &AWarFantasyCharacter::OnReload);
 
+	PlayerInputComponent->BindAction("Aim", IE_Pressed, this, &AWarFantasyCharacter::OnLookDownSights);
+	PlayerInputComponent->BindAction("Aim", IE_Released, this, &AWarFantasyCharacter::OnLookAwayFromSights);
+
+	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &AWarFantasyCharacter::OnCrouchDown);
+	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &AWarFantasyCharacter::OnStandUp);
+
 	PlayerInputComponent->BindAxis("MoveForward", this, &AWarFantasyCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AWarFantasyCharacter::MoveRight);
 
@@ -96,6 +102,9 @@ void AWarFantasyCharacter::SetupPlayerInputComponent(class UInputComponent* Play
 	PlayerInputComponent->BindAxis("TurnRate", this, &AWarFantasyCharacter::TurnAtRate);
 	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
 	PlayerInputComponent->BindAxis("LookUpRate", this, &AWarFantasyCharacter::LookUpAtRate);
+
+	// Set default walk speed. For some reason sprint is automatically called when starting the game. This issue might be solved when deriving a fresh blueprint from this class
+	GetCharacterMovement()->MaxWalkSpeed = walkSpeed;
 }
 
 void AWarFantasyCharacter::OnFire()
@@ -141,26 +150,28 @@ void AWarFantasyCharacter::StartSprint()
 {
 	bSprinting = true;
 
+	GetCharacterMovement()->MaxWalkSpeed = sprintSpeed;
 
-	GetCharacterMovement()->MaxWalkSpeed = 0.f;
 }
 
 void AWarFantasyCharacter::StopSprint()
 {
 	bSprinting = false;
+
+	GetCharacterMovement()->MaxWalkSpeed = walkSpeed;
 }
 
 void AWarFantasyCharacter::OnReload()
 {
 
 	// try and play a firing animation if specified
-	if (HandsReloadAnimation != NULL && ReloadAnimation != NULL)
+	if (HandsReloadAnimation != NULL/* && ReloadAnimation != NULL*/)
 	{
 		bReloading = true;
 
 		// Get the animation object for the arms mesh
 		UAnimInstance* HandsAnimInstance = Mesh1P->GetAnimInstance();
-		UAnimInstance* GunAnimInstance = Mesh1P->GetAnimInstance();
+		UAnimInstance* GunAnimInstance = FP_Gun->GetAnimInstance();
 		if (HandsAnimInstance != NULL && GunAnimInstance != NULL)
 		{
 			//Play the reload animations for the gun and the hand
@@ -171,6 +182,37 @@ void AWarFantasyCharacter::OnReload()
 		}
 	}
 
+}
+
+void AWarFantasyCharacter::OnLookDownSights()
+{
+	if (!bSprinting)
+		bAiming = true;
+
+}
+
+void AWarFantasyCharacter::OnLookAwayFromSights()
+{
+	bAiming = false;
+}
+
+
+
+/** Cease ADS. */
+void AWarFantasyCharacter::OnCrouchDown()
+{
+	UE_LOG(LogTemp, Warning, TEXT("CROUCH PRESSED"));
+	bCrouched = true;
+
+	FirstPersonCameraComponent->RelativeLocation = FVector(0.f, 0.f, 0.f); // Position the camera
+}
+
+/** Cease ADS. */
+void AWarFantasyCharacter::OnStandUp()
+{
+	bCrouched = true;
+
+	FirstPersonCameraComponent->RelativeLocation = FVector(0.f, 0.f, 64.f); // Position the camera
 }
 
 void AWarFantasyCharacter::MoveForward(float Value)
