@@ -14,7 +14,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogFPChar, Warning, All);
 AWarFantasyCharacter::AWarFantasyCharacter()
 {
 	// Set size for collision capsule
-	GetCapsuleComponent()->InitCapsuleSize(40.f, 96.0f);
+	GetCapsuleComponent()->InitCapsuleSize(40.f, 96.0f); //TODO make capsule radius into a variable
 
 	// set our turn rates for input
 	BaseTurnRate = 45.f;				//Appears to be for controller support
@@ -24,7 +24,8 @@ AWarFantasyCharacter::AWarFantasyCharacter()
 	FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
 	FirstPersonCameraComponent->SetupAttachment(GetCapsuleComponent());
 	FirstPersonCameraComponent->RelativeLocation = FVector(0.f, 0.f, 64.f); // Position the camera
-	FirstPersonCameraComponent->bUsePawnControlRotation = true;
+	FirstPersonCameraComponent->SetRelativeScale3D(FVector(0.1f, 0.1f, 0.1f));
+	FirstPersonCameraComponent->bUsePawnControlRotation = true; //This has to be left in to track x-axis rotation
 
 	// Create a mesh component that will be used when being viewed from a '1st person' view (when controlling this pawn)
 	Mesh1P = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CharacterMesh1P"));
@@ -33,7 +34,8 @@ AWarFantasyCharacter::AWarFantasyCharacter()
 	Mesh1P->bCastDynamicShadow = false;
 	Mesh1P->CastShadow = false;
 	Mesh1P->RelativeRotation = FRotator(0.f, -90.f, 0.f);  //TODO shrink and reposition gun
-	Mesh1P->RelativeLocation = FVector(0.f, 0.f, -165.5f);
+	Mesh1P->RelativeLocation = FVector(0.f, 0.f, -16.5f);
+	Mesh1P->SetRelativeScale3D(FVector(0.1f, 0.1f, 0.1f));
 
 	// Create a gun mesh component
 	FP_Gun = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FP_Gun"));
@@ -43,12 +45,16 @@ AWarFantasyCharacter::AWarFantasyCharacter()
 	FP_Gun->SetupAttachment(Mesh1P);
 	//FP_Gun->SetupAttachment(RootComponent);
 
-	FP_MuzzleLocation = CreateDefaultSubobject<USceneComponent>(TEXT("MuzzleLocation"));
-	FP_MuzzleLocation->SetupAttachment(FP_Gun);
-	FP_MuzzleLocation->SetRelativeLocation(FVector(0.2f, 48.4f, -10.6f));
+	FP_WeaponBreachLocation = CreateDefaultSubobject<USceneComponent>(TEXT("WeaponBreachLocation"));
+	FP_WeaponBreachLocation->SetupAttachment(FP_Gun);
+	FP_WeaponBreachLocation->SetRelativeLocation(FVector(-1913.680420f, 3524.140625f, -961.112976f));
 
 	// Default offset from the character location for projectiles to spawn
-	GunOffset = FVector(100.0f, 0.0f, 10.0f);
+	//GunOffset = FVector(100.0f, 0.0f, 10.0f); //I don't think we need this
+
+	// Enables crouching
+	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
+	GetCharacterMovement()->MaxWalkSpeedCrouched = crouchSpeed;
 
 	//TODO wtf does text below mean
 
@@ -61,6 +67,9 @@ void AWarFantasyCharacter::BeginPlay()
 {
 	// Call the base class  
 	Super::BeginPlay();
+
+	// Set default walk speed. For some reason sprint is automatically called when starting the game. This issue might be solved when deriving a fresh blueprint from this class
+	GetCharacterMovement()->MaxWalkSpeed = walkSpeed;
 
 	//Attach gun mesh component to Skeleton, doing it here because the skeleton is not yet created in the constructor
 	FP_Gun->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("WeaponSocket"));
@@ -92,6 +101,12 @@ void AWarFantasyCharacter::SetupPlayerInputComponent(class UInputComponent* Play
 	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &AWarFantasyCharacter::OnCrouchDown);
 	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &AWarFantasyCharacter::OnStandUp);
 
+	PlayerInputComponent->BindAction("Lean Right", IE_Pressed, this, &AWarFantasyCharacter::LeanRight);
+	PlayerInputComponent->BindAction("Lean Right", IE_Released, this, &AWarFantasyCharacter::StandStraight);
+
+	PlayerInputComponent->BindAction("Lean Left", IE_Pressed, this, &AWarFantasyCharacter::LeanLeft);
+	PlayerInputComponent->BindAction("Lean Left", IE_Released, this, &AWarFantasyCharacter::StandStraight);
+
 	PlayerInputComponent->BindAxis("MoveForward", this, &AWarFantasyCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AWarFantasyCharacter::MoveRight);
 
@@ -102,9 +117,6 @@ void AWarFantasyCharacter::SetupPlayerInputComponent(class UInputComponent* Play
 	PlayerInputComponent->BindAxis("TurnRate", this, &AWarFantasyCharacter::TurnAtRate);
 	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
 	PlayerInputComponent->BindAxis("LookUpRate", this, &AWarFantasyCharacter::LookUpAtRate);
-
-	// Set default walk speed. For some reason sprint is automatically called when starting the game. This issue might be solved when deriving a fresh blueprint from this class
-	GetCharacterMovement()->MaxWalkSpeed = walkSpeed;
 }
 
 void AWarFantasyCharacter::OnFire()
@@ -115,9 +127,12 @@ void AWarFantasyCharacter::OnFire()
 		UWorld* const World = GetWorld();
 		if (World != NULL)
 		{
-			const FRotator SpawnRotation = GetControlRotation();
+			const FRotator SpawnRotation = GetControlRotation() + FRotator(30.f, 90.f, 0.f);
 			// MuzzleOffset is in camera space, so transform it to world space before offsetting from the character location to find the final muzzle position
-			const FVector SpawnLocation = ((FP_MuzzleLocation != nullptr) ? FP_MuzzleLocation->GetComponentLocation() : GetActorLocation()) + SpawnRotation.RotateVector(GunOffset);
+			
+			// I don't think we need this redundency
+			//const FVector SpawnLocation = ((FP_WeaponBreachLocation != nullptr) ? FP_WeaponBreachLocation->GetComponentLocation() : GetActorLocation()) + SpawnRotation.RotateVector(GunOffset);
+			const FVector SpawnLocation = FP_WeaponBreachLocation->GetComponentLocation();
 
 			//Set Spawn Collision Handling Override
 			FActorSpawnParameters ActorSpawnParams;
@@ -142,6 +157,7 @@ void AWarFantasyCharacter::OnFire()
 		if (AnimInstance != NULL)
 		{
 			AnimInstance->Montage_Play(FireAnimation, 1.f);
+			//TODO perhaps play both gun and hand animations here
 		}
 	}
 }
@@ -165,7 +181,7 @@ void AWarFantasyCharacter::OnReload()
 {
 
 	// try and play a firing animation if specified
-	if (HandsReloadAnimation != NULL/* && ReloadAnimation != NULL*/)
+	if (HandsReloadAnimation != NULL && ReloadAnimation != NULL)
 	{
 		bReloading = true;
 
@@ -189,14 +205,16 @@ void AWarFantasyCharacter::OnLookDownSights()
 	if (!bSprinting)
 		bAiming = true;
 
+	GetCharacterMovement()->MaxWalkSpeed = ADSWalkSpeed;
+
 }
 
 void AWarFantasyCharacter::OnLookAwayFromSights()
 {
 	bAiming = false;
+
+	GetCharacterMovement()->MaxWalkSpeed = walkSpeed; //TODO this logic ain't gon play
 }
-
-
 
 /** Cease ADS. */
 void AWarFantasyCharacter::OnCrouchDown()
@@ -204,15 +222,53 @@ void AWarFantasyCharacter::OnCrouchDown()
 	UE_LOG(LogTemp, Warning, TEXT("CROUCH PRESSED"));
 	bCrouched = true;
 
-	FirstPersonCameraComponent->RelativeLocation = FVector(0.f, 0.f, 0.f); // Position the camera
+	//FirstPersonCameraComponent->RelativeLocation = FVector(0.f, 0.f, 0.f); // Position the camera
+
+	Crouch();
+
 }
 
 /** Cease ADS. */
 void AWarFantasyCharacter::OnStandUp()
 {
-	bCrouched = true;
+	bCrouched = false; //TODO possibly unused
 
-	FirstPersonCameraComponent->RelativeLocation = FVector(0.f, 0.f, 64.f); // Position the camera
+	UnCrouch();
+}
+
+/** Enable player lean right */
+void AWarFantasyCharacter::LeanRight()
+{
+	bLeaningRight = true;
+
+	FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, 39.f, 0.f));
+	AddControllerRollInput(30.f);
+}
+
+/** Enable player lean right */
+void AWarFantasyCharacter::LeanLeft()
+{
+	bLeaningLeft = true;
+
+	FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, -39.f, 0.f));
+	AddControllerRollInput(-30.f);
+}
+
+/** Disable player lean */
+void AWarFantasyCharacter::StandStraight()
+{
+	if (bLeaningRight)
+	{
+		AddControllerRollInput(-30.f);
+		FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, -39.f, 0.f));
+	}
+	else if (bLeaningLeft) 
+	{
+		AddControllerRollInput(30.f);
+		FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, 39.f, 0.f));
+	}
+
+	bLeaningRight = false, bLeaningLeft = false;
 }
 
 void AWarFantasyCharacter::MoveForward(float Value)
@@ -244,7 +300,27 @@ void AWarFantasyCharacter::TurnAtRate(float Rate)
 
 void AWarFantasyCharacter::LookUpAtRate(float Rate)
 {
+	//TODO Fix aiming when leaning
+	/*
+	if(roll != 0) {
+		Crazy rotation math
+	} else {
+		Do the shit below
+	}
+	*/
 	// calculate delta for this frame from the rate information
 	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
+
+//TODO aim should be affected by velocity
+//TODO perhaps movement speeds depend on direction
+//TODO can only sprint forward
+//TODO can't fire when sprinting or reloading
+//TODO add croach/lean lerp/slerp
+//TODO fix aiming when leaning
+//TODO lock animations when reloading
+//TODO re-implement gun firing and mussle flash animation
+//TODO factor gun rotation into shell casing ejection angle
+//TODO fix bug where shell casings collide with gun and cause a phsyics impact
+//TODO remove dependance on blueprint to change camera/mesh scale
 

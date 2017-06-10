@@ -20,7 +20,7 @@ class AWarFantasyCharacter : public ACharacter
 
 	/** Location on gun mesh where projectiles should spawn. */
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
-	class USceneComponent* FP_MuzzleLocation;
+	class USceneComponent* FP_WeaponBreachLocation;
 
 	/** First person camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
@@ -97,6 +97,15 @@ protected:
 	/** Disable player crouch */
 	void OnStandUp();
 
+	/** Enable player lean right */
+	void LeanRight();
+
+	/** Enable player lean left */
+	void LeanLeft();
+
+	/** Disable player lean */
+	void StandStraight();
+
 	/** Handles moving forward/backward */
 	void MoveForward(float Val);
 
@@ -119,7 +128,7 @@ protected:
 	virtual void SetupPlayerInputComponent(UInputComponent* InputComponent) override;
 	// End of APawn interface
 
-	bool bCrouched = false;
+	bool bCrouched = false, bLeaningRight = false, bLeaningLeft = false;
 
 public:
 	AWarFantasyCharacter();
@@ -135,6 +144,7 @@ public:
 	const float sprintSpeed = 900.f;
 	const float walkSpeed = 600.f;
 	const float crouchSpeed = 300.f;
+	const float ADSWalkSpeed = 200.f;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Gameplay)
 		bool bReloading = false;
