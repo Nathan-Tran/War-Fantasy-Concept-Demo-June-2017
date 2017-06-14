@@ -18,16 +18,29 @@ class AWarFantasyCharacter : public ACharacter
 	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
 	class USkeletalMeshComponent* FP_Gun;
 
+	/** Used for animating the ADS recoil */
+	UPROPERTY(VisibleDefaultsOnly, Category = RotationPoint)
+	class USceneComponent* FP_ADSRotationPoint;
+
 	/** Location on gun mesh where projectiles should spawn. */
-	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
+	UPROPERTY(VisibleDefaultsOnly, Category = SpawnPoint)
 	class USceneComponent* FP_WeaponBreachLocation;
 
 	/** First person camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FirstPersonCameraComponent;
 
+	FRotator recoilRotation, firstShotRotation;
+
+	bool bContinuousStreamOfFire = false, bRecoveringFromRecoil = false;
+
+	void AddControllerPitchInputDespiteRoll(float pitch);
+	void AddControllerYawInputDespiteRoll(float yaw);
+
 protected:
 	virtual void BeginPlay();
+
+	virtual void Tick(float DeltaTime) override;
 
 	/** Sound to play each time we fire */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Audio)
@@ -161,7 +174,7 @@ public:
 
 	/** Projectile class to spawn */
 	UPROPERTY(EditDefaultsOnly, Category = Projectile)
-		TSubclassOf<class AWarFantasyProjectile> ProjectileClass;
+		TSubclassOf<class AShellCasingProjectile> ShellCasing;
 
 	/** Returns Mesh1P subobject **/
 	FORCEINLINE class USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }

@@ -9,8 +9,10 @@ class AWarFantasyProjectile : public AActor
 	GENERATED_BODY()
 
 	/** Sphere collision component */
-	UPROPERTY(VisibleDefaultsOnly, Category = Projectile)
-	class USphereComponent* CollisionComp;
+	//UPROPERTY(VisibleDefaultsOnly, Category = Projectile)
+	//class USphereComponent* CollisionComp;
+
+protected:
 
 	/** Projectile movement component */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
@@ -21,10 +23,10 @@ public:
 
 	/** called when projectile hits something */
 	UFUNCTION()
-	void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+	virtual void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
 	/** Returns CollisionComp subobject **/
-	FORCEINLINE class USphereComponent* GetCollisionComp() const { return CollisionComp; }
+	//FORCEINLINE class USphereComponent* GetCollisionComp() const { return CollisionComp; }
 	/** Returns ProjectileMovement subobject **/
 	FORCEINLINE class UProjectileMovementComponent* GetProjectileMovement() const { return ProjectileMovement; }
 };

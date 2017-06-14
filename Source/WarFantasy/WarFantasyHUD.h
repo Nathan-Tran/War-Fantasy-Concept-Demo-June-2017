@@ -8,15 +8,21 @@ class AWarFantasyHUD : public AHUD
 {
 	GENERATED_BODY()
 
+	/** Crosshair asset pointer */
+	class UTexture2D* CrosshairTex;
+
+	bool bEnableHUD = true;
+
+	//FVector2D Center, CrosshairDrawPosition;
+
 public:
 	AWarFantasyHUD();
 
 	/** Primary draw call for the HUD */
 	virtual void DrawHUD() override;
 
-private:
-	/** Crosshair asset pointer */
-	class UTexture2D* CrosshairTex;
+	/** Enables and disables HUD*/
+	void ToggleHud();
 
 };
 

@@ -2,7 +2,9 @@
 
 #include "WarFantasy.h"
 #include "WarFantasyCharacter.h"
-#include "WarFantasyProjectile.h" //TODO remove
+#include "WarFantasyHUD.h"
+#include "ShellCasingProjectile.h"
+#include "Target.h"
 #include "Animation/AnimInstance.h"
 #include "GameFramework/InputSettings.h"
 
@@ -27,14 +29,18 @@ AWarFantasyCharacter::AWarFantasyCharacter()
 	FirstPersonCameraComponent->SetRelativeScale3D(FVector(0.1f, 0.1f, 0.1f));
 	FirstPersonCameraComponent->bUsePawnControlRotation = true; //This has to be left in to track x-axis rotation
 
+	// Used for animating the ADS recoil
+	FP_ADSRotationPoint = CreateDefaultSubobject<USceneComponent>(TEXT("Aim Down Sights Rotation Point"));
+	FP_ADSRotationPoint->SetupAttachment(FirstPersonCameraComponent);
+
 	// Create a mesh component that will be used when being viewed from a '1st person' view (when controlling this pawn)
 	Mesh1P = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CharacterMesh1P"));
 	Mesh1P->SetOnlyOwnerSee(true);
-	Mesh1P->SetupAttachment(FirstPersonCameraComponent);
+	Mesh1P->SetupAttachment(FP_ADSRotationPoint);
 	Mesh1P->bCastDynamicShadow = false;
 	Mesh1P->CastShadow = false;
 	Mesh1P->RelativeRotation = FRotator(0.f, -90.f, 0.f);  //TODO shrink and reposition gun
-	Mesh1P->RelativeLocation = FVector(0.f, 0.f, -16.5f);
+	Mesh1P->RelativeLocation = FVector(0.f, 0.f, -16.55f);
 	Mesh1P->SetRelativeScale3D(FVector(0.1f, 0.1f, 0.1f));
 
 	// Create a gun mesh component
@@ -78,6 +84,53 @@ void AWarFantasyCharacter::BeginPlay()
 	
 }
 
+void AWarFantasyCharacter::Tick(float DeltaTime) 
+{
+	Super::Tick(DeltaTime);
+
+	if (bAiming && bContinuousStreamOfFire && FP_ADSRotationPoint->RelativeRotation != recoilRotation) {
+		
+		//float pitchNum = FMath::RInterpTo(FirstPersonCameraComponent->RelativeRotation, recoilRotation, GetWorld()->GetDeltaSeconds(), 10).Pitch;
+
+		FP_ADSRotationPoint->SetRelativeRotation(FMath::RInterpTo(FP_ADSRotationPoint->RelativeRotation, recoilRotation, DeltaTime, 40.f));
+
+		AddControllerPitchInput(-0.1f);
+		AddControllerYawInput(0.02f);
+
+		if (FMath::IsNearlyEqual(FP_ADSRotationPoint->RelativeRotation.Pitch, recoilRotation.Pitch, 0.01f)) {
+			bContinuousStreamOfFire = false;
+			bRecoveringFromRecoil = true;
+			FP_ADSRotationPoint->SetRelativeRotation(recoilRotation);
+		}
+
+		
+	}
+	else if (bAiming && bRecoveringFromRecoil && FirstPersonCameraComponent->RelativeRotation != firstShotRotation)
+	{
+		if (FMath::IsNearlyEqual(FP_ADSRotationPoint->RelativeRotation.Yaw, 0.f, 0.01f)) {
+			FP_ADSRotationPoint->SetRelativeRotation(FRotator::ZeroRotator);
+		}
+		else 
+		{
+			FP_ADSRotationPoint->SetRelativeRotation(FMath::RInterpTo(FP_ADSRotationPoint->RelativeRotation, FRotator::ZeroRotator, DeltaTime, 20.f));
+		}
+
+		if (FMath::IsNearlyEqual(FirstPersonCameraComponent->RelativeRotation.Pitch, firstShotRotation.Pitch, 0.1f)) {
+			//FirstPersonCameraComponent->SetRelativeRotation(firstShotRotation);
+			bRecoveringFromRecoil = false;
+			UE_LOG(LogTemp, Warning, TEXT("LOOOOOOOOOOOOOOOOOOOOOOOOL"));
+		}
+		else
+		{
+			FRotator gradualReset = FMath::RInterpTo(FirstPersonCameraComponent->RelativeRotation, firstShotRotation, DeltaTime, 4.f);
+			//AddControllerPitchInput(0.01f);
+
+			AddControllerPitchInput((gradualReset - FirstPersonCameraComponent->RelativeRotation).Pitch / -2.5f);
+			AddControllerYawInput((gradualReset - FirstPersonCameraComponent->RelativeRotation).Yaw / 1.75f);
+		}
+	}
+}
+
 //////////////////////////////////////////////////////////////////////////
 // Input
 
@@ -113,21 +166,65 @@ void AWarFantasyCharacter::SetupPlayerInputComponent(class UInputComponent* Play
 	// We have 2 versions of the rotation bindings to handle different kinds of devices differently
 	// "turn" handles devices that provide an absolute delta, such as a mouse.
 	// "turnrate" is for devices that we choose to treat as a rate of change, such as an analog joystick
-	PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
+	PlayerInputComponent->BindAxis("Turn", this, &AWarFantasyCharacter::AddControllerYawInputDespiteRoll);
 	PlayerInputComponent->BindAxis("TurnRate", this, &AWarFantasyCharacter::TurnAtRate);
-	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
+	PlayerInputComponent->BindAxis("LookUp", this, &AWarFantasyCharacter::AddControllerPitchInputDespiteRoll);
 	PlayerInputComponent->BindAxis("LookUpRate", this, &AWarFantasyCharacter::LookUpAtRate);
+}
+
+
+
+void AWarFantasyCharacter::AddControllerPitchInputDespiteRoll(float pitch)
+{
+	float roll = FirstPersonCameraComponent->RelativeRotation.Roll;
+	float finalPitch, finalYaw;
+
+	if (roll > 1.f || roll < -1.f) // If the roll outside of acceptible deviation
+	{
+		finalPitch = (pitch * FMath::Sin(roll));
+		finalYaw = (pitch * FMath::Cos(roll));
+	}
+	else
+	{
+		finalPitch = pitch;
+		finalYaw = 0;
+	}
+
+	AddControllerPitchInput(finalPitch);
+}
+
+void AWarFantasyCharacter::AddControllerYawInputDespiteRoll(float yaw)
+{
+	float roll = FirstPersonCameraComponent->RelativeRotation.Roll;
+	float finalPitch, finalYaw;
+
+	if (roll > 1.f || roll < -1.f) // If the roll outside of acceptible deviation
+	{
+		finalPitch = (yaw * FMath::Cos(roll));
+		finalYaw = (yaw * FMath::Sin(roll));
+	}
+	else
+	{
+		finalPitch = 0;
+		finalYaw = yaw;
+	}
+
+	AddControllerYawInput(finalYaw);
 }
 
 void AWarFantasyCharacter::OnFire()
 {
+	// These are the correct scaling values
+	/*InputYawScale = 2.5;
+	InputPitchScale = -1.75;*/
+
 	// try and fire a projectile
-	if (ProjectileClass != NULL)
+	if (ShellCasing != NULL)
 	{
 		UWorld* const World = GetWorld();
 		if (World != NULL)
 		{
-			const FRotator SpawnRotation = GetControlRotation() + FRotator(30.f, 90.f, 0.f);
+			const FRotator SpawnRotation = GetControlRotation() + FRotator(30.f, 0.f, 90.f);
 			// MuzzleOffset is in camera space, so transform it to world space before offsetting from the character location to find the final muzzle position
 			
 			// I don't think we need this redundency
@@ -136,10 +233,10 @@ void AWarFantasyCharacter::OnFire()
 
 			//Set Spawn Collision Handling Override
 			FActorSpawnParameters ActorSpawnParams;
-			ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding;
+			ActorSpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButDontSpawnIfColliding; //TODO set spawn params for shell casings
 
 			// spawn the projectile at the muzzle
-			World->SpawnActor<AWarFantasyProjectile>(ProjectileClass, SpawnLocation, SpawnRotation, ActorSpawnParams);
+			World->SpawnActor<AShellCasingProjectile>(ShellCasing, SpawnLocation, SpawnRotation, ActorSpawnParams);
 		}
 	}
 
@@ -149,17 +246,79 @@ void AWarFantasyCharacter::OnFire()
 		UGameplayStatics::PlaySoundAtLocation(this, FireSound, GetActorLocation());
 	}
 
-	// try and play a firing animation if specified
-	if (FireAnimation != NULL)
+	/*
+	*	RayCast code
+	*/
+	FHitResult* bulletHit = new FHitResult();
+	FVector startTrace;
+	FVector endTrace;
+
+	// Aim the ray from the camera center or from the gun barrel
+	if (!bAiming) {
+		startTrace = FirstPersonCameraComponent->GetComponentLocation();
+		endTrace = (FirstPersonCameraComponent->GetForwardVector() * 2000.f) + startTrace;
+	}
+	else
 	{
-		// Get the animation object for the arms mesh
-		UAnimInstance* AnimInstance = Mesh1P->GetAnimInstance();
+		startTrace = FP_Gun->GetComponentLocation();
+		endTrace = (FP_Gun->GetRightVector() * 6000.f) + startTrace;
+	}
+
+	FCollisionQueryParams* traceParams = new FCollisionQueryParams();
+
+	DrawDebugLine(GetWorld(), startTrace, endTrace, FColor::Red, false, 50.0f);
+
+	if (GetWorld()->LineTraceSingleByChannel(*bulletHit, startTrace, endTrace, ECC_Visibility, *traceParams)) 
+	{
+		UE_LOG(LogTemp, Warning, TEXT("PEWWWW PEWWW Hit SOmething"));
+
+		ATarget* possibleTarget = Cast<ATarget>(bulletHit->Actor.Get());
+
+		if (possibleTarget != NULL && !possibleTarget->IsPendingKill()) 
+		{
+			possibleTarget->DamageTarget(100.f);
+		}
+	}
+
+	// Get the animation object for the arms mesh
+	UAnimInstance* AnimInstance = Mesh1P->GetAnimInstance();
+
+	// try and play a firing animation if specified
+	if (!bAiming && FireAnimation != NULL)
+	{
 		if (AnimInstance != NULL)
 		{
 			AnimInstance->Montage_Play(FireAnimation, 1.f);
 			//TODO perhaps play both gun and hand animations here
 		}
+
+		if (!bContinuousStreamOfFire)
+		{
+			//firstShotRotation = FirstPersonCameraComponent->RelativeRotation;
+			bContinuousStreamOfFire = true;
+		}
+
+		AddControllerPitchInput(-0.1f);
+		AddControllerYawInput(0.02f);
+	} 
+	else if (bAiming && ADSFireAnimation != NULL)
+	{
+		if (!bContinuousStreamOfFire)
+		{
+			firstShotRotation = FirstPersonCameraComponent->RelativeRotation;
+			bContinuousStreamOfFire = true;
+		}
+
+		if (AnimInstance != NULL)
+		{
+			//AnimInstance->Montage_Play(ADSFireAnimation, 1.f);
+			//TODO perhaps play both gun and hand animations here
+		}
+
+		// Set the recoil for each shot here
+		recoilRotation = FP_ADSRotationPoint->RelativeRotation + FRotator(2.f, 0.2f, 0.f);
 	}
+
 }
 
 void AWarFantasyCharacter::StartSprint()
@@ -205,13 +364,25 @@ void AWarFantasyCharacter::OnLookDownSights()
 	if (!bSprinting)
 		bAiming = true;
 
-	GetCharacterMovement()->MaxWalkSpeed = ADSWalkSpeed;
+	AWarFantasyHUD * HUD = Cast<AWarFantasyHUD>(UGameplayStatics::GetPlayerController(this, 0)->GetHUD());
+	HUD->ToggleHud();
 
+	//TODO: Camera zoom
+
+	GetCharacterMovement()->MaxWalkSpeed = ADSWalkSpeed;
 }
 
 void AWarFantasyCharacter::OnLookAwayFromSights()
 {
 	bAiming = false;
+	bRecoveringFromRecoil = false;
+
+	AWarFantasyHUD * HUD = Cast<AWarFantasyHUD>(UGameplayStatics::GetPlayerController(this, 0)->GetHUD());
+	HUD->ToggleHud();
+
+	//FP_ADSRotationPoint->SetRelativeRotation(firstShotRotation);
+
+	//TODO: undo camera zoom
 
 	GetCharacterMovement()->MaxWalkSpeed = walkSpeed; //TODO this logic ain't gon play
 }
@@ -323,4 +494,8 @@ void AWarFantasyCharacter::LookUpAtRate(float Rate)
 //TODO factor gun rotation into shell casing ejection angle
 //TODO fix bug where shell casings collide with gun and cause a phsyics impact
 //TODO remove dependance on blueprint to change camera/mesh scale
+//TODO put a vertical rotation cap on the recoil
+//TODO sprint interupts reload
+//TODO refactor code to make it modular
+//TODO make the arms mesh slide back and forth while firing
 

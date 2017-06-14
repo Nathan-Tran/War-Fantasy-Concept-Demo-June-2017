@@ -3,7 +3,7 @@
 #ifndef __WARFANTASY_H__
 #define __WARFANTASY_H__
 
-#include "EngineMinimal.h"
+#include "Engine.h"
 
 
 #endif
