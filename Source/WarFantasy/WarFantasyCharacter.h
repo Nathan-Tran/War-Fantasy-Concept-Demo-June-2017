@@ -36,6 +36,8 @@ class AWarFantasyCharacter : public ACharacter
 
 	void AddControllerPitchInputDespiteRoll(float pitch);
 	void AddControllerYawInputDespiteRoll(float yaw);
+	void AddPitchInputDespiteRoll(float pitch);
+	void AddYawInputDespiteRoll(float yaw);
 
 	// Recoil variables
 	float timeUntilNextShot = 0.f, recoilRecoveryLerpAlpha = 0.f;
@@ -53,6 +55,8 @@ class AWarFantasyCharacter : public ACharacter
 		THESE ARE TWEAKABLE VALUES FOR THE WEAPON RECOIL
 	*/
 
+	float ignorePlayerRecoilCompensationTolerancePitch = 1.f;
+	float ignorePlayerRecoilCompensationToleranceYaw = 0.5f;
 
 	/*
 		THESE ARE TWEAKABLE VALUES FOR COVER LEAN

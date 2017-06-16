@@ -118,12 +118,25 @@ void AWarFantasyCharacter::Tick(float DeltaTime)
 
 	if (bContinuousStreamOfFire) 
 	{
-		float pitchAdjust = FMath::FInterpTo(rotationSinceLastShot.Pitch, -2.f, DeltaTime, 40.f);
-		float yawAdjust = FMath::FInterpTo(rotationSinceLastShot.Yaw, -0.2f, DeltaTime, 40.f);
+		float pitchAdjust;
+		float yawAdjust;
+
+		if (bAiming) 
+		{
+			pitchAdjust = FMath::FInterpTo(rotationSinceLastShot.Pitch, -2.f, DeltaTime, 40.f);
+			yawAdjust = FMath::FInterpTo(rotationSinceLastShot.Yaw, -0.2f, DeltaTime, 40.f);
+		}
+		else
+		{
+			pitchAdjust = FMath::FInterpTo(rotationSinceLastShot.Pitch, -1.f, DeltaTime, 40.f);
+			yawAdjust = FMath::FInterpTo(rotationSinceLastShot.Yaw, -0.1f, DeltaTime, 40.f);
+		}
+
 		float pitchRecoilThisFrame = pitchAdjust - rotationSinceLastShot.Pitch;
 		float yawRecoilThisFrame = yawAdjust - rotationSinceLastShot.Yaw;
-		AddControllerPitchInputDespiteRoll(pitchRecoilThisFrame);
-		AddControllerYawInputDespiteRoll(yawRecoilThisFrame);
+
+		AddPitchInputDespiteRoll(pitchRecoilThisFrame);
+		AddYawInputDespiteRoll(yawRecoilThisFrame);
 		accumulatedRecoil -= FRotator(pitchRecoilThisFrame, yawRecoilThisFrame, 0.f);
 		rotationSinceLastShot = FRotator(pitchAdjust, yawAdjust, 0.f);
 
@@ -141,8 +154,8 @@ void AWarFantasyCharacter::Tick(float DeltaTime)
 		recoilRecoveryLerpAlpha += 0.1f;
 
 		rotationSinceLastShot += rotationThisFrame;
-		AddControllerPitchInputDespiteRoll(rotationThisFrame.Pitch);
-		AddControllerYawInputDespiteRoll(rotationThisFrame.Yaw);
+		AddPitchInputDespiteRoll(rotationThisFrame.Pitch);
+		AddYawInputDespiteRoll(rotationThisFrame.Yaw);
 
 		if (recoilRecoveryLerpAlpha >= 1.f) {
 			UE_LOG(LogTemp, Warning, TEXT("RECOIL RECOVERY COMPLETE"));
@@ -274,15 +287,35 @@ void AWarFantasyCharacter::SetupPlayerInputComponent(class UInputComponent* Play
 	PlayerInputComponent->BindAxis("LookUpRate", this, &AWarFantasyCharacter::LookUpAtRate);
 }
 
+/** If the player's input is within a ceratin range, then use it to compensate for recoil*/
 void AWarFantasyCharacter::AddControllerPitchInputDespiteRoll(float pitch)
 {
+	if (accumulatedRecoil != FRotator::ZeroRotator && pitch < ignorePlayerRecoilCompensationTolerancePitch)
+	{
+		accumulatedRecoil -= FRotator(pitch, 0.f, 0.f);
+	}
+	AddPitchInputDespiteRoll(pitch);
+}
+
+/** If the player's input is within a ceratin range, then use it to compensate for recoil*/
+void AWarFantasyCharacter::AddControllerYawInputDespiteRoll(float yaw)
+{
+	if (accumulatedRecoil != FRotator::ZeroRotator && FMath::Abs(yaw) < ignorePlayerRecoilCompensationToleranceYaw)
+	{
+		accumulatedRecoil -= FRotator(0.f, yaw, 0.f);
+	}
+	AddYawInputDespiteRoll(yaw);
+}
+
+void AWarFantasyCharacter::AddPitchInputDespiteRoll(float pitch)
+{
 	float roll = FirstPersonCameraComponent->RelativeRotation.Roll;
-	float finalPitch = pitch, finalYaw = 0;
+	//float finalPitch = pitch, finalYaw = 0;
 
 	//if (roll > 0.1) 
 	//{
-		finalPitch = pitch * FMath::Cos(FMath::DegreesToRadians(roll));
-		finalYaw = -1.f * pitch * FMath::Sin(FMath::DegreesToRadians(roll));
+	float finalPitch = pitch * FMath::Cos(FMath::DegreesToRadians(roll));
+	float finalYaw = -1.f * pitch * FMath::Sin(FMath::DegreesToRadians(roll));
 	//}
 	//else if (roll < -0.1)
 	//{
@@ -294,10 +327,10 @@ void AWarFantasyCharacter::AddControllerPitchInputDespiteRoll(float pitch)
 	AddControllerYawInput(finalYaw);
 }
 
-void AWarFantasyCharacter::AddControllerYawInputDespiteRoll(float yaw)
+void AWarFantasyCharacter::AddYawInputDespiteRoll(float yaw)
 {
 	float roll = FirstPersonCameraComponent->RelativeRotation.Roll;
-	float finalPitch = 0, finalYaw = yaw;
+	//float finalPitch = 0, finalYaw = yaw;
 
 	//if (roll > 0.1)
 	//{
@@ -306,8 +339,8 @@ void AWarFantasyCharacter::AddControllerYawInputDespiteRoll(float yaw)
 	//}
 	//else if (roll < -0.1)
 	//{
-		finalPitch = -1.f * yaw * FMath::Sin(roll);
-		finalYaw = yaw * FMath::Cos(roll);
+		float finalPitch = -1.f * yaw * FMath::Sin(roll);
+		float finalYaw = yaw * FMath::Cos(roll);
 	//}
 
 	AddControllerPitchInput(finalPitch);
@@ -370,7 +403,7 @@ void AWarFantasyCharacter::FireBullet()
 	// Aim the ray from the camera center or from the gun barrel
 	if (!bAiming) {
 		startTrace = FirstPersonCameraComponent->GetComponentLocation();
-		endTrace = (FirstPersonCameraComponent->GetForwardVector() * 2000.f) + startTrace;
+		endTrace = (FirstPersonCameraComponent->GetForwardVector() * 6000.f) + startTrace;
 	}
 	else
 	{
@@ -410,20 +443,14 @@ void AWarFantasyCharacter::FireBullet()
 	} 
 	else if (bAiming && ADSFireAnimation != NULL)
 	{
-		if (!bContinuousStreamOfFire)
-		{
-			firstShotRotation = FirstPersonCameraComponent->RelativeRotation;
-			bContinuousStreamOfFire = true;
-		}
-
 		if (AnimInstance != NULL)
 		{
-			//AnimInstance->Montage_Play(ADSFireAnimation, 1.f);
+			AnimInstance->Montage_Play(ADSFireAnimation, 1.f);
 			//TODO perhaps play both gun and hand animations here
 		}
 
-		// Set the recoil for each shot here
-		recoilRotation = FP_ADSRotationPoint->RelativeRotation + FRotator(2.f, 0.2f, 0.f);
+		bContinuousStreamOfFire = true;
+		rotationSinceLastShot = FRotator::ZeroRotator;
 	}
 
 }
@@ -529,7 +556,7 @@ void AWarFantasyCharacter::LeanRight()
 	bLeaningRight = true;
 
 	FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, 39.f, 0.f));
-	AddControllerRollInput(25.f);
+	AddControllerRollInput(leanRotationAmount);
 }
 
 /** Enable player lean right */
@@ -539,7 +566,7 @@ void AWarFantasyCharacter::LeanLeft()
 	bLeaningLeft = true;
 
 	FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, -39.f, 0.f));
-	AddControllerRollInput(-25.f);
+	AddControllerRollInput(-leanRotationAmount);
 }
 
 /** Disable player lean */
@@ -547,12 +574,12 @@ void AWarFantasyCharacter::StandStraight()
 {
 	if (bLeaningRight)
 	{
-		AddControllerRollInput(-25.f);
+		AddControllerRollInput(-leanRotationAmount);
 		FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, -39.f, 0.f));
 	}
 	else if (bLeaningLeft) 
 	{
-		AddControllerRollInput(25.f);
+		AddControllerRollInput(leanRotationAmount);
 		FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, 39.f, 0.f));
 	}
 
@@ -605,14 +632,16 @@ void AWarFantasyCharacter::LookUpAtRate(float Rate)
 //TODO can only sprint forward
 //TODO can't fire when sprinting or reloading
 //TODO add croach/lean lerp/slerp
-//TODO fix aiming when leaning
 //TODO lock animations when reloading
 //TODO re-implement gun firing and mussle flash animation
 //TODO factor gun rotation into shell casing ejection angle
 //TODO fix bug where shell casings collide with gun and cause a phsyics impact
 //TODO remove dependance on blueprint to change camera/mesh scale
-//TODO put a vertical rotation cap on the recoil
+//TODO fix the max vertical aim + automatic fire bug
 //TODO sprint interupts reload
 //TODO refactor code to make it modular
 //TODO make the arms mesh slide back and forth while firing
+//TODO first few shots in autofire should have more recoil
+//TODO for all lerp and interpto functions, deltatime must be implemented
+//TODO shell casing projection should inherit the player velocity
 
