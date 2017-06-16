@@ -23,6 +23,5 @@ public:
 
 	/** Enables and disables HUD*/
 	void ToggleHud();
-
 };
 

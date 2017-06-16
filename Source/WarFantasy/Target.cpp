@@ -19,7 +19,6 @@ ATarget::ATarget()
 void ATarget::BeginPlay()
 {
 	Super::BeginPlay();
-	
 }
 
 // Called every frame

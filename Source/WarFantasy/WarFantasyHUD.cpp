@@ -46,7 +46,6 @@ void AWarFantasyHUD::DrawHUD()
 /** Enables and disables HUD*/
 void AWarFantasyHUD::ToggleHud()
 {
-	if (bEnableHUD) bEnableHUD = false;
-	else bEnableHUD = true;
+	bEnableHUD = !bEnableHUD;
 }
 

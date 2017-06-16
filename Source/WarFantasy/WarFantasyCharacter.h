@@ -30,12 +30,35 @@ class AWarFantasyCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FirstPersonCameraComponent;
 
-	FRotator recoilRotation, firstShotRotation;
+	FRotator recoilRotation, firstShotRotation, accumulatedRecoil, rotationSinceLastShot;
 
-	bool bContinuousStreamOfFire = false, bRecoveringFromRecoil = false;
+	bool bContinuousStreamOfFire = false, bRecoveringFromRecoil = false, bTriggerCurrentlyPulled = false, bFullAutoMode = true;
 
 	void AddControllerPitchInputDespiteRoll(float pitch);
 	void AddControllerYawInputDespiteRoll(float yaw);
+
+	// Recoil variables
+	float timeUntilNextShot = 0.f, recoilRecoveryLerpAlpha = 0.f;
+
+	// Crouch variables
+	float crouchRepositionAlpha = 0.f, crouchMovementSinceLastFrame = 0.f;
+
+	/*
+		THESE ARE TWEAKABLE VALUES FOR THE CHARACTER
+	*/
+
+	float crouchCameraVerticalOffset = 55.f;
+	
+	/*
+		THESE ARE TWEAKABLE VALUES FOR THE WEAPON RECOIL
+	*/
+
+
+	/*
+		THESE ARE TWEAKABLE VALUES FOR COVER LEAN
+	*/
+
+	float leanRotationAmount = 25.f;
 
 protected:
 	virtual void BeginPlay();
@@ -85,15 +108,24 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animations)
 		class UAnimMontage* LowerAnimation;
-	
-	/** Fires a projectile. */
-	void OnFire();
+
+	/** Gun rigger pulled. */
+	void OnFireDown();
+
+	/** Gun trigger released */
+	void OnFireUp();
+
+	/** Fires a ray and plays animations. */
+	void FireBullet();
 
 	/** Initiates the sprint movement and animations. */
 	void StartSprint();
 
 	/** Cease the sprint movement and animations. */
 	void StopSprint();
+
+	/** Switch weapon from auto to semi. */
+	void SwitchFireMode();
 
 	/** Reloads the weapon. */
 	void OnReload();
