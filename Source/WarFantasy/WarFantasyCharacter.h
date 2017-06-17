@@ -30,20 +30,21 @@ class AWarFantasyCharacter : public ACharacter
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FirstPersonCameraComponent;
 
-	FRotator recoilRotation, firstShotRotation, accumulatedRecoil, rotationSinceLastShot;
+	FRotator accumulatedRecoil, rotationSinceLastShot;
 
 	bool bContinuousStreamOfFire = false, bRecoveringFromRecoil = false, bTriggerCurrentlyPulled = false, bFullAutoMode = true;
 
-	void AddControllerPitchInputDespiteRoll(float pitch);
-	void AddControllerYawInputDespiteRoll(float yaw);
-	void AddPitchInputDespiteRoll(float pitch);
-	void AddYawInputDespiteRoll(float yaw);
-
 	// Recoil variables
 	float timeUntilNextShot = 0.f, recoilRecoveryLerpAlpha = 0.f;
+	float currentShotRecoilAmplifier, nextRecoilX, nextRecoilY;
 
 	// Crouch variables
 	float crouchRepositionAlpha = 0.f, crouchMovementSinceLastFrame = 0.f;
+
+	// Lean variables
+	float leanRepositionAlpha = 0.f;
+	float leanRotationSinceLastFrame;
+	FVector leanMovementSinceLastFrame;
 
 	/*
 		THESE ARE TWEAKABLE VALUES FOR THE CHARACTER
@@ -55,14 +56,30 @@ class AWarFantasyCharacter : public ACharacter
 		THESE ARE TWEAKABLE VALUES FOR THE WEAPON RECOIL
 	*/
 
-	float ignorePlayerRecoilCompensationTolerancePitch = 1.f;
-	float ignorePlayerRecoilCompensationToleranceYaw = 0.5f;
+	float ignorePlayerRecoilCompensationTolerancePitch = 1.f; // These two values might map well to the recoil values themselves
+	float ignorePlayerRecoilCompensationToleranceYaw = 0.1f;
+	float firstShotRecoilAmplifier = 8.f;
+	int32 weaponMagazineCapacity = 30;
+	int32 roundsCurrentlyInMagazine;
+	FVector2D M4A1_RecoilAccuracy = FVector2D(-0.1f,-1.f);
+	FVector2D M4A1_HorizontalRecoilVariance = FVector2D(0.5f, 2.f);
+	FVector2D M4A1_VerticalRecoilVariance = FVector2D(0.5f, 2.f);
 
 	/*
 		THESE ARE TWEAKABLE VALUES FOR COVER LEAN
 	*/
 
-	float leanRotationAmount = 25.f;
+	float leanRotationAmount = 15.f;
+	FVector leanCameraTranslationOffset = FVector(0.f, 39.f, 0.f);
+
+	/*
+		PRIVATE FUNCTION DEFINITIONS
+	*/
+
+	void AddControllerPitchInputDespiteRoll(float pitch);
+	void AddControllerYawInputDespiteRoll(float yaw);
+	void AddPitchInputDespiteRoll(float pitch);
+	void AddYawInputDespiteRoll(float yaw);
 
 protected:
 	virtual void BeginPlay();

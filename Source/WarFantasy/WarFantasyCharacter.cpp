@@ -62,6 +62,9 @@ AWarFantasyCharacter::AWarFantasyCharacter()
 	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
 	GetCharacterMovement()->MaxWalkSpeedCrouched = crouchSpeed;
 
+	// Initialize weapon property variables
+	roundsCurrentlyInMagazine = weaponMagazineCapacity + 1;
+
 	//TODO wtf does text below mean
 
 	// Note: The ProjectileClass and the skeletal mesh/anim blueprints for Mesh1P, FP_Gun, and VR_Gun 
@@ -93,11 +96,11 @@ void AWarFantasyCharacter::Tick(float DeltaTime)
 	*/
 	if (bTriggerCurrentlyPulled)
 	{
-
 		if (timeUntilNextShot <= 0.f) 
 		{
-			timeUntilNextShot = 0.075f;//TODO maybe this should just be "="
 			FireBullet();
+			timeUntilNextShot = 0.075f; //TODO maybe this should just be "="
+			timeUntilNextShot -= DeltaTime;
 		}
 		else
 		{
@@ -123,13 +126,13 @@ void AWarFantasyCharacter::Tick(float DeltaTime)
 
 		if (bAiming) 
 		{
-			pitchAdjust = FMath::FInterpTo(rotationSinceLastShot.Pitch, -2.f, DeltaTime, 40.f);
-			yawAdjust = FMath::FInterpTo(rotationSinceLastShot.Yaw, -0.2f, DeltaTime, 40.f);
+			pitchAdjust = FMath::FInterpTo(rotationSinceLastShot.Pitch, nextRecoilY * currentShotRecoilAmplifier, DeltaTime, 40.f);
+			yawAdjust = FMath::FInterpTo(rotationSinceLastShot.Yaw, nextRecoilX * currentShotRecoilAmplifier, DeltaTime, 40.f);
 		}
 		else
 		{
-			pitchAdjust = FMath::FInterpTo(rotationSinceLastShot.Pitch, -1.f, DeltaTime, 40.f);
-			yawAdjust = FMath::FInterpTo(rotationSinceLastShot.Yaw, -0.1f, DeltaTime, 40.f);
+			pitchAdjust = FMath::FInterpTo(rotationSinceLastShot.Pitch, (nextRecoilY / 2.f) * currentShotRecoilAmplifier, DeltaTime, 40.f);
+			yawAdjust = FMath::FInterpTo(rotationSinceLastShot.Yaw, (nextRecoilX / 2.f) * currentShotRecoilAmplifier, DeltaTime, 40.f);
 		}
 
 		float pitchRecoilThisFrame = pitchAdjust - rotationSinceLastShot.Pitch;
@@ -151,14 +154,13 @@ void AWarFantasyCharacter::Tick(float DeltaTime)
 	{
 		FRotator rotationThisFrame = FMath::Lerp(FRotator::ZeroRotator, accumulatedRecoil, recoilRecoveryLerpAlpha) - rotationSinceLastShot;
 
-		recoilRecoveryLerpAlpha += 0.1f;
+		recoilRecoveryLerpAlpha += 10.f * DeltaTime;
 
 		rotationSinceLastShot += rotationThisFrame;
 		AddPitchInputDespiteRoll(rotationThisFrame.Pitch);
 		AddYawInputDespiteRoll(rotationThisFrame.Yaw);
 
 		if (recoilRecoveryLerpAlpha >= 1.f) {
-			UE_LOG(LogTemp, Warning, TEXT("RECOIL RECOVERY COMPLETE"));
 			bRecoveringFromRecoil = false;
 			recoilRecoveryLerpAlpha = 0.f;
 			rotationSinceLastShot = FRotator::ZeroRotator;
@@ -166,80 +168,80 @@ void AWarFantasyCharacter::Tick(float DeltaTime)
 		}
 	}
 
-	//TODO REMOVEOLD VARIABLES FROM HEADER FILE
-
-	/*if (bAiming && bContinuousStreamOfFire) {
-		
-		//float pitchNum = FMath::RInterpTo(FirstPersonCameraComponent->RelativeRotation, recoilRotation, GetWorld()->GetDeltaSeconds(), 10).Pitch;
-
-		FP_ADSRotationPoint->SetRelativeRotation(FMath::RInterpTo(FP_ADSRotationPoint->RelativeRotation, recoilRotation, DeltaTime, 40.f));
-
-		AddControllerPitchInputDespiteRoll(-0.1f);
-		AddControllerYawInputDespiteRoll(0.02f);
-
-		if (FMath::IsNearlyEqual(FP_ADSRotationPoint->RelativeRotation.Pitch, recoilRotation.Pitch, 0.01f)) {
-			bContinuousStreamOfFire = false;
-			bRecoveringFromRecoil = true;
-			FP_ADSRotationPoint->SetRelativeRotation(recoilRotation);
-		}
-
-		
-	}
-	else if (bAiming && bRecoveringFromRecoil && FirstPersonCameraComponent->RelativeRotation != firstShotRotation)
-	{
-		if (FMath::IsNearlyEqual(FP_ADSRotationPoint->RelativeRotation.Yaw, 0.f, 0.01f)) {
-			FP_ADSRotationPoint->SetRelativeRotation(FRotator::ZeroRotator);
-		}
-		else 
-		{
-			FP_ADSRotationPoint->SetRelativeRotation(FMath::RInterpTo(FP_ADSRotationPoint->RelativeRotation, FRotator::ZeroRotator, DeltaTime, 20.f));
-		}
-
-		if (FMath::IsNearlyEqual(FirstPersonCameraComponent->RelativeRotation.Pitch, firstShotRotation.Pitch, 0.1f)) {
-			//FirstPersonCameraComponent->SetRelativeRotation(firstShotRotation);
-			bRecoveringFromRecoil = false;
-			UE_LOG(LogTemp, Warning, TEXT("LOOOOOOOOOOOOOOOOOOOOOOOOL"));
-		}
-		else
-		{
-			FRotator gradualReset = FMath::RInterpTo(FirstPersonCameraComponent->RelativeRotation, firstShotRotation, DeltaTime, 4.f);
-			//AddControllerPitchInput(0.01f);
-
-			AddControllerPitchInput((gradualReset - FirstPersonCameraComponent->RelativeRotation).Pitch / -2.5f);
-			AddControllerYawInput((gradualReset - FirstPersonCameraComponent->RelativeRotation).Yaw / 1.75f);
-		}
-	}*/
-
 	// Crouch code
 	if (bCrouched)
 	{
-		if (crouchRepositionAlpha >= 1.f) {
-			return;
-			//UE_LOG(LogTemp, Warning, TEXT("RECOIL RECOVERY COMPLETE"));
-			recoilRecoveryLerpAlpha = 0.f;
-			crouchMovementSinceLastFrame = 0;
+		if (crouchRepositionAlpha < 1.f) 
+		{
+			crouchRepositionAlpha += 10.f * DeltaTime;
+			float crouchMovementThisFrame = FMath::Lerp(0.f, crouchCameraVerticalOffset, crouchRepositionAlpha) - crouchMovementSinceLastFrame;
+			crouchMovementSinceLastFrame += crouchMovementThisFrame;
+			FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, 0.f, -crouchMovementThisFrame));
 		}
-
-		float crouchMovementThisFrame = FMath::Lerp(0.f, crouchCameraVerticalOffset, crouchRepositionAlpha) - crouchMovementSinceLastFrame;
-
-		crouchRepositionAlpha += 0.1f;
-		crouchMovementSinceLastFrame += crouchMovementThisFrame;
-		FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, 0.f, -crouchMovementThisFrame));
 	}
 	else
 	{
-		if (crouchRepositionAlpha <= 0.f) {
-			return;
-			//UE_LOG(LogTemp, Warning, TEXT("RECOIL RECOVERY COMPLETE"));
-			recoilRecoveryLerpAlpha = 1.f;
-			crouchMovementSinceLastFrame = 0;
+		if (crouchRepositionAlpha > 0.f) 
+		{
+			crouchRepositionAlpha -= 10.f * DeltaTime;
+			float crouchMovementThisFrame = FMath::Lerp(0.f, crouchCameraVerticalOffset, crouchRepositionAlpha) - crouchMovementSinceLastFrame;
+			crouchMovementSinceLastFrame += crouchMovementThisFrame;
+			FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, 0.f, -crouchMovementThisFrame));
 		}
+	}
 
-		float crouchMovementThisFrame = FMath::Lerp(0.f, crouchCameraVerticalOffset, crouchRepositionAlpha) - crouchMovementSinceLastFrame;
+	// Cover lean code
+	if (bLeaningRight)
+	{
+		if (leanRepositionAlpha < 1.f)
+		{
+			leanRepositionAlpha += 10.f * DeltaTime;;
 
-		crouchRepositionAlpha -= 0.1f;
-		crouchMovementSinceLastFrame += crouchMovementThisFrame;
-		FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, 0.f, -crouchMovementThisFrame));
+			FVector leanMovementThisFrame = FMath::Lerp(FVector::ZeroVector, leanCameraTranslationOffset, leanRepositionAlpha) - leanMovementSinceLastFrame;
+			float leanRotationThisFrame = FMath::Lerp(0.f, leanRotationAmount, leanRepositionAlpha) - leanRotationSinceLastFrame;
+			leanMovementSinceLastFrame += leanMovementThisFrame;
+			leanRotationSinceLastFrame += leanRotationThisFrame;
+			FirstPersonCameraComponent->AddRelativeLocation(leanMovementThisFrame);
+			AddControllerRollInput(leanRotationThisFrame);
+		}
+	}
+	else if (bLeaningLeft)
+	{
+		if (leanRepositionAlpha > -1.f)
+		{
+			leanRepositionAlpha -= 10.f * DeltaTime;
+
+			FVector leanMovementThisFrame = FMath::Lerp(FVector::ZeroVector, -leanCameraTranslationOffset, -leanRepositionAlpha) - leanMovementSinceLastFrame;
+			float leanRotationThisFrame = FMath::Lerp(0.f, -leanRotationAmount, -leanRepositionAlpha) - leanRotationSinceLastFrame;
+			leanMovementSinceLastFrame += leanMovementThisFrame;
+			leanRotationSinceLastFrame += leanRotationThisFrame;
+			FirstPersonCameraComponent->AddRelativeLocation(leanMovementThisFrame);
+			AddControllerRollInput(leanRotationThisFrame);
+		}
+	} 
+	else if (leanRepositionAlpha > 0.f)
+	{
+		leanRepositionAlpha -= 10.f * DeltaTime;
+		if (leanRepositionAlpha < 0.f) leanRepositionAlpha = 0.f;
+
+		FVector leanMovementThisFrame = FMath::Lerp(FVector::ZeroVector, leanCameraTranslationOffset, leanRepositionAlpha) - leanMovementSinceLastFrame;
+		float leanRotationThisFrame = FMath::Lerp(0.f, leanRotationAmount, leanRepositionAlpha) - leanRotationSinceLastFrame;
+		leanMovementSinceLastFrame += leanMovementThisFrame;
+		leanRotationSinceLastFrame += leanRotationThisFrame;
+		FirstPersonCameraComponent->AddRelativeLocation(leanMovementThisFrame);
+		AddControllerRollInput(leanRotationThisFrame);
+	}
+	else if(leanRepositionAlpha < 0.f)
+	{
+		leanRepositionAlpha += 10.f * DeltaTime;
+		if (leanRepositionAlpha > 0.f) leanRepositionAlpha = 0.f;
+
+		FVector leanMovementThisFrame = FMath::Lerp(FVector::ZeroVector, -leanCameraTranslationOffset, -leanRepositionAlpha) - leanMovementSinceLastFrame;
+		float leanRotationThisFrame = FMath::Lerp(0.f, -leanRotationAmount, -leanRepositionAlpha) - leanRotationSinceLastFrame;
+		leanMovementSinceLastFrame += leanMovementThisFrame;
+		leanRotationSinceLastFrame += leanRotationThisFrame;
+		FirstPersonCameraComponent->AddRelativeLocation(leanMovementThisFrame);
+		AddControllerRollInput(leanRotationThisFrame);
 	}
 }
 
@@ -339,8 +341,8 @@ void AWarFantasyCharacter::AddYawInputDespiteRoll(float yaw)
 	//}
 	//else if (roll < -0.1)
 	//{
-		float finalPitch = -1.f * yaw * FMath::Sin(roll);
-		float finalYaw = yaw * FMath::Cos(roll);
+		float finalPitch = -1.f * yaw * FMath::Sin(FMath::DegreesToRadians(roll));
+		float finalYaw = yaw * FMath::Cos(FMath::DegreesToRadians(roll));
 	//}
 
 	AddControllerPitchInput(finalPitch);
@@ -350,7 +352,9 @@ void AWarFantasyCharacter::AddYawInputDespiteRoll(float yaw)
 /** Gun rigger pulled. */
 void AWarFantasyCharacter::OnFireDown()
 {
+	//if (bReloading) return;
 	bTriggerCurrentlyPulled = true;
+	currentShotRecoilAmplifier = firstShotRecoilAmplifier;
 }
 
 /** Gun trigger released */
@@ -364,6 +368,19 @@ void AWarFantasyCharacter::FireBullet()
 	// These are the correct scaling values
 	/*InputYawScale = 2.5;
 	InputPitchScale = -1.75;*/
+
+
+	// Reduce the initial shot recoil
+	currentShotRecoilAmplifier = FMath::Sqrt(currentShotRecoilAmplifier);
+
+	if (roundsCurrentlyInMagazine == 0)
+	{
+		//TODO play empty chamber sounds
+		//TODO decide if I should force them to reload
+		UE_LOG(LogTemp, Warning, TEXT("Empty Mag"));
+		bTriggerCurrentlyPulled = false;
+		return;
+	}
 
 	// try and fire a projectile
 	if (ShellCasing != NULL)
@@ -413,7 +430,7 @@ void AWarFantasyCharacter::FireBullet()
 
 	FCollisionQueryParams* traceParams = new FCollisionQueryParams();
 
-	DrawDebugLine(GetWorld(), startTrace, endTrace, FColor::Red, false, 50.0f);
+	//DrawDebugLine(GetWorld(), startTrace, endTrace, FColor::Red, false, 50.0f);
 
 	if (GetWorld()->LineTraceSingleByChannel(*bulletHit, startTrace, endTrace, ECC_Visibility, *traceParams)) 
 	{
@@ -427,6 +444,12 @@ void AWarFantasyCharacter::FireBullet()
 		}
 	}
 
+
+	// Calculate the next shot's recoil
+	float randY = FMath::FRandRange(0.f, 1.f);
+	nextRecoilY = (0.5f + randY) * M4A1_RecoilAccuracy.Y;
+	nextRecoilX = (0.5f + FMath::FRandRange(0.f, ((1.f - randY) / 1.5f))) * M4A1_RecoilAccuracy.X;
+
 	// Get the animation object for the arms mesh
 	UAnimInstance* AnimInstance = Mesh1P->GetAnimInstance();
 
@@ -436,6 +459,12 @@ void AWarFantasyCharacter::FireBullet()
 		if (AnimInstance != NULL)
 		{
 			AnimInstance->Montage_Play(FireAnimation, 1.f);
+		}
+
+		if (bRecoveringFromRecoil) {
+
+			accumulatedRecoil *= (1.f - recoilRecoveryLerpAlpha);
+			recoilRecoveryLerpAlpha = 0.f;
 		}
 
 		bContinuousStreamOfFire = true;
@@ -449,10 +478,17 @@ void AWarFantasyCharacter::FireBullet()
 			//TODO perhaps play both gun and hand animations here
 		}
 
+		if (bRecoveringFromRecoil) {
+
+			accumulatedRecoil *= (1.f - recoilRecoveryLerpAlpha);
+			recoilRecoveryLerpAlpha = 0.f;
+		}
+
 		bContinuousStreamOfFire = true;
 		rotationSinceLastShot = FRotator::ZeroRotator;
 	}
 
+	roundsCurrentlyInMagazine -= 1;
 }
 
 void AWarFantasyCharacter::StartSprint()
@@ -492,10 +528,19 @@ void AWarFantasyCharacter::OnReload()
 			//Play the reload animations for the gun and the hand
 			HandsAnimInstance->Montage_Play(HandsReloadAnimation, 1.f);
 			GunAnimInstance->Montage_Play(ReloadAnimation, 1.f);
+			//GunAnimInstance->GetRelevantAnimLength
+
+			//FTimerHandle PostAnimTimerHandle;
+			//GetWorldTimerManager().SetTimer(PostAnimTimerHandle, this, bReloading = false, GunAnimInstance->GetRelevantAnimLength(0,0), false);
 
 			//TODO delay code (I'm starting to think all animations should be done through blueprints)
+
+			if (roundsCurrentlyInMagazine > 0) roundsCurrentlyInMagazine = 1;
+			roundsCurrentlyInMagazine += weaponMagazineCapacity;
 		}
 	}
+
+	
 }
 
 void AWarFantasyCharacter::OnLookDownSights()
@@ -554,9 +599,6 @@ void AWarFantasyCharacter::LeanRight()
 {
 	if (bLeaningLeft || bSprinting) return;
 	bLeaningRight = true;
-
-	FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, 39.f, 0.f));
-	AddControllerRollInput(leanRotationAmount);
 }
 
 /** Enable player lean right */
@@ -564,25 +606,11 @@ void AWarFantasyCharacter::LeanLeft()
 {
 	if (bLeaningRight || bSprinting) return;
 	bLeaningLeft = true;
-
-	FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, -39.f, 0.f));
-	AddControllerRollInput(-leanRotationAmount);
 }
 
 /** Disable player lean */
 void AWarFantasyCharacter::StandStraight()
 {
-	if (bLeaningRight)
-	{
-		AddControllerRollInput(-leanRotationAmount);
-		FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, -39.f, 0.f));
-	}
-	else if (bLeaningLeft) 
-	{
-		AddControllerRollInput(leanRotationAmount);
-		FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, 39.f, 0.f));
-	}
-
 	bLeaningRight = false, bLeaningLeft = false;
 }
 
@@ -644,4 +672,5 @@ void AWarFantasyCharacter::LookUpAtRate(float Rate)
 //TODO first few shots in autofire should have more recoil
 //TODO for all lerp and interpto functions, deltatime must be implemented
 //TODO shell casing projection should inherit the player velocity
+//TODO depth of field effect
 
