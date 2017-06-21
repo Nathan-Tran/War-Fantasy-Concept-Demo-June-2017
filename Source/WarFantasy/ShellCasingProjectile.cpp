@@ -21,7 +21,8 @@ AShellCasingProjectile::AShellCasingProjectile()
 	ShellCasingMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ShellCasing"));
 	ShellCasingMesh->SetupAttachment(ShellCasingCollisionComp);
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> MeshObj(TEXT("/Game/IBFPSAmmo/Ammo/ammo_556x45_case"));
-	ShellCasingMesh->SetStaticMesh(MeshObj.Object);
+	if (MeshObj.Object)
+		ShellCasingMesh->SetStaticMesh(MeshObj.Object);
 	ShellCasingMesh->RelativeLocation = FVector(0.f, 0.f, -1.0f);
 
 	// Use a ProjectileMovementComponent to govern this projectile's movement

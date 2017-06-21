@@ -15,3 +15,21 @@ AWarFantasyGameMode::AWarFantasyGameMode()
 	// use our custom HUD class
 	HUDClass = AWarFantasyHUD::StaticClass();
 }
+
+
+
+// Called when the game starts or when spawned
+void AWarFantasyGameMode::BeginPlay()
+{
+	Super::BeginPlay();
+
+	/*if (GEngine)
+	{
+		//TODO
+		UGameUserSettings* MyGameSettings = GEngine->GetGameUserSettings();
+		MyGameSettings->SetScreenResolution(FIntPoint(1920, 1080));
+		MyGameSettings->SetFullscreenMode(EWindowMode::Fullscreen);
+		MyGameSettings->SetVSyncEnabled(true);
+		MyGameSettings->ApplySettings(false);
+	}*/
+}

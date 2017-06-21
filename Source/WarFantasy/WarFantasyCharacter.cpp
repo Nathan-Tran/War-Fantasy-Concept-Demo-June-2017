@@ -15,6 +15,10 @@ DEFINE_LOG_CATEGORY_STATIC(LogFPChar, Warning, All);
 
 AWarFantasyCharacter::AWarFantasyCharacter()
 {
+
+	// TODO not sure if this is needed for a child of Character/Actor
+	// PrimaryActorTick.bCanEverTick = true;
+
 	// Set size for collision capsule
 	GetCapsuleComponent()->InitCapsuleSize(40.f, 96.0f); //TODO make capsule radius into a variable
 
@@ -25,7 +29,7 @@ AWarFantasyCharacter::AWarFantasyCharacter()
 	// Create a CameraComponent	
 	FirstPersonCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
 	FirstPersonCameraComponent->SetupAttachment(GetCapsuleComponent());
-	FirstPersonCameraComponent->RelativeLocation = FVector(0.f, 0.f, 64.f); // Position the camera
+	FirstPersonCameraComponent->SetRelativeLocation(FVector(0.f, 0.f, 64.f)); // Position the camera
 	FirstPersonCameraComponent->SetRelativeScale3D(FVector(0.1f, 0.1f, 0.1f));
 	FirstPersonCameraComponent->bUsePawnControlRotation = true; //This has to be left in to track x-axis rotation
 
@@ -39,8 +43,8 @@ AWarFantasyCharacter::AWarFantasyCharacter()
 	Mesh1P->SetupAttachment(FP_ADSRotationPoint);
 	Mesh1P->bCastDynamicShadow = false;
 	Mesh1P->CastShadow = false;
-	Mesh1P->RelativeRotation = FRotator(0.f, -90.f, 0.f);  //TODO shrink and reposition gun
-	Mesh1P->RelativeLocation = FVector(0.f, 0.f, -16.55f);
+	Mesh1P->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));  //TODO shrink and reposition gun
+	Mesh1P->SetRelativeLocation(FVector(0.f, 0.f, -16.55f));
 	Mesh1P->SetRelativeScale3D(FVector(0.1f, 0.1f, 0.1f));
 
 	// Create a gun mesh component
@@ -62,7 +66,7 @@ AWarFantasyCharacter::AWarFantasyCharacter()
 	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
 	GetCharacterMovement()->MaxWalkSpeedCrouched = crouchSpeed;
 
-	// Initialize weapon property variables
+	// Initialize weapon property variables (one in the chamber)
 	roundsCurrentlyInMagazine = weaponMagazineCapacity + 1;
 
 	//TODO wtf does text below mean
@@ -90,6 +94,9 @@ void AWarFantasyCharacter::BeginPlay()
 void AWarFantasyCharacter::Tick(float DeltaTime) 
 {
 	Super::Tick(DeltaTime);
+
+	float currentFrameYawDelta = 0.f, currentFramePitchDelta = 0.f;
+	FVector currentFrameMovementDelta = FVector::ZeroVector;
 
 	/*
 	Full Auto Fire Rate Code
@@ -138,8 +145,12 @@ void AWarFantasyCharacter::Tick(float DeltaTime)
 		float pitchRecoilThisFrame = pitchAdjust - rotationSinceLastShot.Pitch;
 		float yawRecoilThisFrame = yawAdjust - rotationSinceLastShot.Yaw;
 
-		AddPitchInputDespiteRoll(pitchRecoilThisFrame);
-		AddYawInputDespiteRoll(yawRecoilThisFrame);
+		//AddPitchInputDespiteRoll(pitchRecoilThisFrame);
+		//AddYawInputDespiteRoll(yawRecoilThisFrame);
+
+		currentFramePitchDelta += pitchRecoilThisFrame;
+		currentFrameYawDelta += yawRecoilThisFrame;
+
 		accumulatedRecoil -= FRotator(pitchRecoilThisFrame, yawRecoilThisFrame, 0.f);
 		rotationSinceLastShot = FRotator(pitchAdjust, yawAdjust, 0.f);
 
@@ -155,10 +166,13 @@ void AWarFantasyCharacter::Tick(float DeltaTime)
 		FRotator rotationThisFrame = FMath::Lerp(FRotator::ZeroRotator, accumulatedRecoil, recoilRecoveryLerpAlpha) - rotationSinceLastShot;
 
 		recoilRecoveryLerpAlpha += 10.f * DeltaTime;
-
 		rotationSinceLastShot += rotationThisFrame;
-		AddPitchInputDespiteRoll(rotationThisFrame.Pitch);
-		AddYawInputDespiteRoll(rotationThisFrame.Yaw);
+
+		//AddPitchInputDespiteRoll(rotationThisFrame.Pitch);
+		//AddYawInputDespiteRoll(rotationThisFrame.Yaw);
+
+		currentFramePitchDelta += rotationThisFrame.Pitch;
+		currentFrameYawDelta += rotationThisFrame.Yaw;
 
 		if (recoilRecoveryLerpAlpha >= 1.f) {
 			bRecoveringFromRecoil = false;
@@ -169,57 +183,51 @@ void AWarFantasyCharacter::Tick(float DeltaTime)
 	}
 
 	// Crouch code
-	if (bCrouched)
+	if (bCrouched && crouchRepositionAlpha < 1.f) 
 	{
-		if (crouchRepositionAlpha < 1.f) 
-		{
-			crouchRepositionAlpha += 10.f * DeltaTime;
-			float crouchMovementThisFrame = FMath::Lerp(0.f, crouchCameraVerticalOffset, crouchRepositionAlpha) - crouchMovementSinceLastFrame;
-			crouchMovementSinceLastFrame += crouchMovementThisFrame;
-			FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, 0.f, -crouchMovementThisFrame));
-		}
+		crouchRepositionAlpha += 10.f * DeltaTime;
+		float crouchMovementThisFrame = FMath::Lerp(0.f, crouchCameraVerticalOffset, crouchRepositionAlpha) - crouchMovementSinceLastFrame;
+		crouchMovementSinceLastFrame += crouchMovementThisFrame;
+		//FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, 0.f, -crouchMovementThisFrame));
+
+		currentFrameMovementDelta += FVector(0.f, 0.f, -crouchMovementThisFrame);
 	}
-	else
+	else if (!bCrouched && crouchRepositionAlpha > 0.f) 
 	{
-		if (crouchRepositionAlpha > 0.f) 
-		{
-			crouchRepositionAlpha -= 10.f * DeltaTime;
-			float crouchMovementThisFrame = FMath::Lerp(0.f, crouchCameraVerticalOffset, crouchRepositionAlpha) - crouchMovementSinceLastFrame;
-			crouchMovementSinceLastFrame += crouchMovementThisFrame;
-			FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, 0.f, -crouchMovementThisFrame));
-		}
+		crouchRepositionAlpha -= 10.f * DeltaTime;
+		float crouchMovementThisFrame = FMath::Lerp(0.f, crouchCameraVerticalOffset, crouchRepositionAlpha) - crouchMovementSinceLastFrame;
+		crouchMovementSinceLastFrame += crouchMovementThisFrame;
+		//FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, 0.f, -crouchMovementThisFrame));
+
+		currentFrameMovementDelta += FVector(0.f, 0.f, -crouchMovementThisFrame);
 	}
 
 	// Cover lean code
-	if (bLeaningRight)
+	if (bLeaningRight && leanRepositionAlpha < 1.f)
 	{
-		if (leanRepositionAlpha < 1.f)
-		{
-			leanRepositionAlpha += 10.f * DeltaTime;;
+		leanRepositionAlpha += 10.f * DeltaTime;;
 
-			FVector leanMovementThisFrame = FMath::Lerp(FVector::ZeroVector, leanCameraTranslationOffset, leanRepositionAlpha) - leanMovementSinceLastFrame;
-			float leanRotationThisFrame = FMath::Lerp(0.f, leanRotationAmount, leanRepositionAlpha) - leanRotationSinceLastFrame;
-			leanMovementSinceLastFrame += leanMovementThisFrame;
-			leanRotationSinceLastFrame += leanRotationThisFrame;
-			FirstPersonCameraComponent->AddRelativeLocation(leanMovementThisFrame);
-			AddControllerRollInput(leanRotationThisFrame);
-		}
+		FVector leanMovementThisFrame = FMath::Lerp(FVector::ZeroVector, leanCameraTranslationOffset, leanRepositionAlpha) - leanMovementSinceLastFrame;
+		float leanRotationThisFrame = FMath::Lerp(0.f, leanRotationAmount, leanRepositionAlpha) - leanRotationSinceLastFrame;
+		leanMovementSinceLastFrame += leanMovementThisFrame;
+		leanRotationSinceLastFrame += leanRotationThisFrame;
+		//FirstPersonCameraComponent->AddRelativeLocation(leanMovementThisFrame);
+		currentFrameMovementDelta += leanMovementThisFrame;
+		AddControllerRollInput(leanRotationThisFrame);
 	}
-	else if (bLeaningLeft)
+	else if (bLeaningLeft && leanRepositionAlpha > -1.f)
 	{
-		if (leanRepositionAlpha > -1.f)
-		{
-			leanRepositionAlpha -= 10.f * DeltaTime;
+		leanRepositionAlpha -= 10.f * DeltaTime;
 
-			FVector leanMovementThisFrame = FMath::Lerp(FVector::ZeroVector, -leanCameraTranslationOffset, -leanRepositionAlpha) - leanMovementSinceLastFrame;
-			float leanRotationThisFrame = FMath::Lerp(0.f, -leanRotationAmount, -leanRepositionAlpha) - leanRotationSinceLastFrame;
-			leanMovementSinceLastFrame += leanMovementThisFrame;
-			leanRotationSinceLastFrame += leanRotationThisFrame;
-			FirstPersonCameraComponent->AddRelativeLocation(leanMovementThisFrame);
-			AddControllerRollInput(leanRotationThisFrame);
-		}
+		FVector leanMovementThisFrame = FMath::Lerp(FVector::ZeroVector, -leanCameraTranslationOffset, -leanRepositionAlpha) - leanMovementSinceLastFrame;
+		float leanRotationThisFrame = FMath::Lerp(0.f, -leanRotationAmount, -leanRepositionAlpha) - leanRotationSinceLastFrame;
+		leanMovementSinceLastFrame += leanMovementThisFrame;
+		leanRotationSinceLastFrame += leanRotationThisFrame;
+		//FirstPersonCameraComponent->AddRelativeLocation(leanMovementThisFrame);
+		currentFrameMovementDelta += leanMovementThisFrame;
+		AddControllerRollInput(leanRotationThisFrame);
 	} 
-	else if (leanRepositionAlpha > 0.f)
+	else if (!bLeaningRight && leanRepositionAlpha > 0.f)
 	{
 		leanRepositionAlpha -= 10.f * DeltaTime;
 		if (leanRepositionAlpha < 0.f) leanRepositionAlpha = 0.f;
@@ -228,10 +236,11 @@ void AWarFantasyCharacter::Tick(float DeltaTime)
 		float leanRotationThisFrame = FMath::Lerp(0.f, leanRotationAmount, leanRepositionAlpha) - leanRotationSinceLastFrame;
 		leanMovementSinceLastFrame += leanMovementThisFrame;
 		leanRotationSinceLastFrame += leanRotationThisFrame;
-		FirstPersonCameraComponent->AddRelativeLocation(leanMovementThisFrame);
+		//FirstPersonCameraComponent->AddRelativeLocation(leanMovementThisFrame);
+		currentFrameMovementDelta += leanMovementThisFrame;
 		AddControllerRollInput(leanRotationThisFrame);
 	}
-	else if(leanRepositionAlpha < 0.f)
+	else if(!bLeaningLeft && leanRepositionAlpha < 0.f)
 	{
 		leanRepositionAlpha += 10.f * DeltaTime;
 		if (leanRepositionAlpha > 0.f) leanRepositionAlpha = 0.f;
@@ -240,9 +249,19 @@ void AWarFantasyCharacter::Tick(float DeltaTime)
 		float leanRotationThisFrame = FMath::Lerp(0.f, -leanRotationAmount, -leanRepositionAlpha) - leanRotationSinceLastFrame;
 		leanMovementSinceLastFrame += leanMovementThisFrame;
 		leanRotationSinceLastFrame += leanRotationThisFrame;
-		FirstPersonCameraComponent->AddRelativeLocation(leanMovementThisFrame);
+		//FirstPersonCameraComponent->AddRelativeLocation(leanMovementThisFrame);
+		currentFrameMovementDelta += leanMovementThisFrame;
 		AddControllerRollInput(leanRotationThisFrame);
 	}
+
+	if (currentFramePitchDelta != 0.f && currentFrameYawDelta != 0.f)
+	{
+		AddPitchInputDespiteRoll(currentFramePitchDelta);
+		AddYawInputDespiteRoll(currentFrameYawDelta);
+	}
+
+	if (currentFrameMovementDelta != FVector::ZeroVector)
+		FirstPersonCameraComponent->AddRelativeLocation(currentFrameMovementDelta);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -430,7 +449,7 @@ void AWarFantasyCharacter::FireBullet()
 
 	FCollisionQueryParams* traceParams = new FCollisionQueryParams();
 
-	//DrawDebugLine(GetWorld(), startTrace, endTrace, FColor::Red, false, 50.0f);
+	DrawDebugLine(GetWorld(), startTrace, endTrace, FColor::Red, false, 50.0f);
 
 	if (GetWorld()->LineTraceSingleByChannel(*bulletHit, startTrace, endTrace, ECC_Visibility, *traceParams)) 
 	{
