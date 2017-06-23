@@ -10,11 +10,15 @@ APortalBaseClass::APortalBaseClass()
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	SetRootComponent(DefaultSceneComponent);
-	DefaultSceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Default Scene Component"));
+	//playerActor = Cast<AWarFantasyCharacter>(UGameplayStatics::GetPlayerController(this, 0));
+	//playerActor = Cast<AWarFantasyCharacter>(UGameplayStatics::GetPlayerController(this, 0));
+
+
+	SetRootComponent(PortalA);
+	PortalA = CreateDefaultSubobject<USceneComponent>(TEXT("Portal A Location"));
 
 	PortalDoorway = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Portal Doorway"));
-	PortalDoorway->SetupAttachment(DefaultSceneComponent);
+	PortalDoorway->SetupAttachment(PortalA);
 	PortalDoorway->SetRelativeLocation(FVector(0.f, 0.f, 100.f));
 	PortalDoorway->SetRelativeScale3D(FVector(2.f, 0.9f, 1.f));
 	PortalDoorway->SetRelativeRotation(FRotator(-90.f, 0.f, 0.f));
@@ -33,12 +37,11 @@ APortalBaseClass::APortalBaseClass()
 		PortalDoorway->SetMaterial(0, PortalMat.Object);
 
 	PortalCapture = CreateDefaultSubobject<USceneCaptureComponent2D>(TEXT("Portal Capture"));
-	PortalCapture->SetupAttachment(DefaultSceneComponent);
+	//PortalCapture->SetupAttachment(PortalA);
 	PortalCapture->FOVAngle = 90.f;
-	//PortalCapture->target
-	PortalCapture->MaxViewDistanceOverride = 100.f;
-	PortalCapture->bEnableClipPlane = true;
-	PortalCapture->ClipPlaneNormal = FVector(1.f,0.f,0.f);
+	//PortalCapture->MaxViewDistanceOverride = 100.f;
+	//PortalCapture->bEnableClipPlane = true;
+	//PortalCapture->ClipPlaneNormal = FVector(1.f,0.f,0.f);
 
 	static ConstructorHelpers::FObjectFinder<UTextureRenderTarget2D> RenderTrgt(TEXT("/Game/PortalTech/Portal1_RT"));
 	if (RenderTrgt.Object)
@@ -47,7 +50,7 @@ APortalBaseClass::APortalBaseClass()
 }
 
 // Called every frame
-void APortalBaseClass::Tick(float DeltaTime)
+/*void APortalBaseClass::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
@@ -58,5 +61,5 @@ void APortalBaseClass::BeginPlay()
 {
 	Super::BeginPlay();
 	
-}
+}*/
 

@@ -19,8 +19,8 @@ class AWarFantasyCharacter : public ACharacter
 	class USkeletalMeshComponent* FP_Gun;
 
 	/** Used for animating the ADS recoil */
-	UPROPERTY(VisibleDefaultsOnly, Category = RotationPoint)
-	class USceneComponent* FP_ADSRotationPoint;
+	//UPROPERTY(VisibleDefaultsOnly, Category = RotationPoint)
+	//class USceneComponent* FP_ADSRotationPoint;
 
 	/** Location on gun mesh where projectiles should spawn. */
 	UPROPERTY(VisibleDefaultsOnly, Category = SpawnPoint)
@@ -33,6 +33,9 @@ class AWarFantasyCharacter : public ACharacter
 	FRotator accumulatedRecoil, rotationSinceLastShot;
 
 	bool bContinuousStreamOfFire = false, bRecoveringFromRecoil = false, bTriggerCurrentlyPulled = false, bFullAutoMode = true;
+
+	// Sprint variables
+	float forwardMovementSpeed = 0.f;
 
 	// Recoil variables
 	float timeUntilNextShot = 0.f, recoilRecoveryLerpAlpha = 0.f;
@@ -59,11 +62,11 @@ class AWarFantasyCharacter : public ACharacter
 	float ignorePlayerRecoilCompensationTolerancePitch = 1.f; // These two values might map well to the recoil values themselves
 	float ignorePlayerRecoilCompensationToleranceYaw = 0.1f;
 	float firstShotRecoilAmplifier = 8.f;
+	float postReloadIdleTimeCompensation = 0.2f;
 	int32 weaponMagazineCapacity = 30;
 	int32 roundsCurrentlyInMagazine;
-	FVector2D M4A1_RecoilAccuracy = FVector2D(-0.1f,-1.f);
-	FVector2D M4A1_HorizontalRecoilVariance = FVector2D(0.5f, 2.f);
-	FVector2D M4A1_VerticalRecoilVariance = FVector2D(0.5f, 2.f);
+	FVector2D M4A1_RecoilAccuracy = FVector2D(-0.1f, 0.5f);
+	FVector2D M4A1_RecoilVariance = FVector2D(-0.2f, 1.f);
 
 	/*
 		THESE ARE TWEAKABLE VALUES FOR COVER LEAN
@@ -94,8 +97,8 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animations)
 		class UAnimMontage* FireAnimation;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animations)
-		class UAnimMontage* HandsFireAnimation;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animations)
+	//	class UAnimMontage* HandsFireAnimation;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animations)
 		class UAnimMontage* ADSFireAnimation;
@@ -106,23 +109,23 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animations)
 		class UAnimMontage* HandsReloadAnimation;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animations)
-		class UAnimMontage* SprintAnimation;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animations)
+	//	class UAnimMontage* SprintAnimation;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animations)
-		class UAnimMontage* IdleAnimation;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animations)
+	//	class UAnimMontage* IdleAnimation;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animations)
-		class UAnimMontage* HandsIdleAnimation;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animations)
+	//	class UAnimMontage* HandsIdleAnimation;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animations)
-		class UAnimMontage* ADSIdleAnimation;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animations)
+	//	class UAnimMontage* ADSIdleAnimation;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animations)
-		class UAnimMontage* WalkAnimation;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animations)
+	//	class UAnimMontage* WalkAnimation;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animations)
-		class UAnimMontage* ADSWalkAnimation;
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animations)
+	//	class UAnimMontage* ADSWalkAnimation;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animations)
 		class UAnimMontage* RaiseAnimation;
@@ -233,6 +236,8 @@ public:
 	FORCEINLINE class USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }
 	/** Returns FirstPersonCameraComponent subobject **/
 	FORCEINLINE class UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
+
+	void lol();
 
 };
 

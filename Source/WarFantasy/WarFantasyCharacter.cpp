@@ -34,13 +34,14 @@ AWarFantasyCharacter::AWarFantasyCharacter()
 	FirstPersonCameraComponent->bUsePawnControlRotation = true; //This has to be left in to track x-axis rotation
 
 	// Used for animating the ADS recoil
-	FP_ADSRotationPoint = CreateDefaultSubobject<USceneComponent>(TEXT("Aim Down Sights Rotation Point"));
-	FP_ADSRotationPoint->SetupAttachment(FirstPersonCameraComponent);
+	//FP_ADSRotationPoint = CreateDefaultSubobject<USceneComponent>(TEXT("Aim Down Sights Rotation Point"));
+	//FP_ADSRotationPoint->SetupAttachment(FirstPersonCameraComponent);
 
 	// Create a mesh component that will be used when being viewed from a '1st person' view (when controlling this pawn)
 	Mesh1P = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("CharacterMesh1P"));
 	Mesh1P->SetOnlyOwnerSee(true);
-	Mesh1P->SetupAttachment(FP_ADSRotationPoint);
+	//Mesh1P->SetupAttachment(FP_ADSRotationPoint);
+	Mesh1P->SetupAttachment(FirstPersonCameraComponent);
 	Mesh1P->bCastDynamicShadow = false;
 	Mesh1P->CastShadow = false;
 	Mesh1P->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));  //TODO shrink and reposition gun
@@ -88,6 +89,15 @@ void AWarFantasyCharacter::BeginPlay()
 	FP_Gun->AttachToComponent(Mesh1P, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), TEXT("WeaponSocket"));
 
 	Mesh1P->SetHiddenInGame(false, true);
+
+	// Get the animation object for the arms mesh
+	UAnimInstance* AnimInstance = Mesh1P->GetAnimInstance();
+
+	// try and play a firing animation if specified
+	if (RaiseAnimation != NULL)
+	{
+		AnimInstance->Montage_Play(RaiseAnimation, 1.f);
+	}
 	
 }
 
@@ -103,15 +113,11 @@ void AWarFantasyCharacter::Tick(float DeltaTime)
 	*/
 	if (bTriggerCurrentlyPulled)
 	{
+		timeUntilNextShot -= DeltaTime;
 		if (timeUntilNextShot <= 0.f) 
 		{
 			FireBullet();
 			timeUntilNextShot = 0.075f; //TODO maybe this should just be "="
-			timeUntilNextShot -= DeltaTime;
-		}
-		else
-		{
-			timeUntilNextShot -= DeltaTime;
 		}
 	}
 	else if (timeUntilNextShot > 0.f) 
@@ -371,7 +377,7 @@ void AWarFantasyCharacter::AddYawInputDespiteRoll(float yaw)
 /** Gun rigger pulled. */
 void AWarFantasyCharacter::OnFireDown()
 {
-	//if (bReloading) return;
+	if (bReloading) return;
 	bTriggerCurrentlyPulled = true;
 	currentShotRecoilAmplifier = firstShotRecoilAmplifier;
 }
@@ -463,11 +469,11 @@ void AWarFantasyCharacter::FireBullet()
 		}
 	}
 
-
 	// Calculate the next shot's recoil
 	float randY = FMath::FRandRange(0.f, 1.f);
-	nextRecoilY = (0.5f + randY) * M4A1_RecoilAccuracy.Y;
-	nextRecoilX = (0.5f + FMath::FRandRange(0.f, ((1.f - randY) / 1.5f))) * M4A1_RecoilAccuracy.X;
+	float randX = FMath::FRandRange(0.f, (1.f - randY));
+	nextRecoilY = M4A1_RecoilAccuracy.Y + (randY * M4A1_RecoilVariance.Y);
+	nextRecoilX = M4A1_RecoilAccuracy.X + (randX * M4A1_RecoilVariance.X);
 
 	// Get the animation object for the arms mesh
 	UAnimInstance* AnimInstance = Mesh1P->GetAnimInstance();
@@ -512,12 +518,13 @@ void AWarFantasyCharacter::FireBullet()
 
 void AWarFantasyCharacter::StartSprint()
 {
+	if (forwardMovementSpeed <= 0.f) return;
+
 	StandStraight();
 
 	bSprinting = true;
 
 	GetCharacterMovement()->MaxWalkSpeed = sprintSpeed;
-
 }
 
 void AWarFantasyCharacter::StopSprint()
@@ -534,6 +541,8 @@ void AWarFantasyCharacter::SwitchFireMode()
 
 void AWarFantasyCharacter::OnReload()
 {
+	if (bReloading || roundsCurrentlyInMagazine == weaponMagazineCapacity) return;
+
 	// try and play a firing animation if specified
 	if (HandsReloadAnimation != NULL && ReloadAnimation != NULL)
 	{
@@ -547,10 +556,13 @@ void AWarFantasyCharacter::OnReload()
 			//Play the reload animations for the gun and the hand
 			HandsAnimInstance->Montage_Play(HandsReloadAnimation, 1.f);
 			GunAnimInstance->Montage_Play(ReloadAnimation, 1.f);
-			//GunAnimInstance->GetRelevantAnimLength
+			//GunAnimInstance->GetRelevantAnimLength(0, 0);
 
-			//FTimerHandle PostAnimTimerHandle;
-			//GetWorldTimerManager().SetTimer(PostAnimTimerHandle, this, bReloading = false, GunAnimInstance->GetRelevantAnimLength(0,0), false);
+			float animLength = ReloadAnimation->GetPlayLength() - postReloadIdleTimeCompensation; // Subtract a small amount of idle time
+
+			FTimerHandle PostAnimTimerHandle;
+			GetWorldTimerManager().SetTimer(PostAnimTimerHandle, this, &AWarFantasyCharacter::lol, animLength, false);
+			//GetWorldTimerManager().SetTimer()
 
 			//TODO delay code (I'm starting to think all animations should be done through blueprints)
 
@@ -593,24 +605,22 @@ void AWarFantasyCharacter::OnLookAwayFromSights()
 /** Cease ADS. */
 void AWarFantasyCharacter::OnCrouchDown()
 {
-	UE_LOG(LogTemp, Warning, TEXT("CROUCH PRESSED"));
-	bCrouched = true;
+	if (GetCharacterMovement()->IsFalling()) return;	// Prevents weird crouch in mid air camera jump
 
-	//FirstPersonCameraComponent->RelativeLocation = FVector(0.f, 0.f, 0.f); // Position the camera
-
-	//FVector tempStorage = FirstPersonCameraComponent->GetComponentLocation();
+	bCrouched = true; 
 	FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, 0.f, crouchCameraVerticalOffset));
 	Crouch();
-
 }
 
 /** Cease ADS. */
 void AWarFantasyCharacter::OnStandUp()
 {
-	bCrouched = false; //TODO possibly unused
-
-	FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, 0.f, -crouchCameraVerticalOffset));
-	UnCrouch();
+	if (bCrouched)										// This check prevents weird crouch in mid air camera jump
+	{
+		bCrouched = false;
+		FirstPersonCameraComponent->AddRelativeLocation(FVector(0.f, 0.f, -crouchCameraVerticalOffset));
+		UnCrouch();
+	}
 }
 
 /** Enable player lean right */
@@ -635,11 +645,16 @@ void AWarFantasyCharacter::StandStraight()
 
 void AWarFantasyCharacter::MoveForward(float Value)
 {
+	forwardMovementSpeed = Value;
+
 	if (Value != 0.0f)
 	{
 		// add movement in that direction
 		AddMovementInput(GetActorForwardVector(), Value);
 	}
+
+	if (Value <= 0.f)
+		StopSprint();
 }
 
 void AWarFantasyCharacter::MoveRight(float Value)
@@ -647,7 +662,6 @@ void AWarFantasyCharacter::MoveRight(float Value)
 	if (Value != 0.0f)
 	{
 		FVector movementVector = GetActorRightVector();
-		//if (bSprinting) movementVector *= sprintRate;
 
 		// add movement in that direction
 		AddMovementInput(movementVector, Value);
@@ -692,4 +706,9 @@ void AWarFantasyCharacter::LookUpAtRate(float Rate)
 //TODO for all lerp and interpto functions, deltatime must be implemented
 //TODO shell casing projection should inherit the player velocity
 //TODO depth of field effect
+
+void AWarFantasyCharacter::lol()
+{
+	bReloading = false;
+}
 
