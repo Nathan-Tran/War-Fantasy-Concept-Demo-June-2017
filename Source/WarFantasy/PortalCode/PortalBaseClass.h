@@ -3,7 +3,7 @@
 #pragma once
 
 #include "GameFramework/Actor.h"
-#include "WarFantasyCharacter.h"
+//#include "WarFantasyCharacter.h"
 #include "PortalBaseClass.generated.h"
 
 UCLASS()
@@ -18,21 +18,29 @@ public:
 
 protected:
 
-	class USceneComponent* PortalA;
+	class APlayerCameraManager* playerCamera;
 
-	class UCameraComponent* playerCamera;
+	ACharacter* thePlayer;
+
+	UPROPERTY(VisibleDefaultsOnly)
+		class USceneComponent* PortalA;
+
+	UPROPERTY(VisibleDefaultsOnly)
+		class USceneComponent* PortalB;
 
 	/** The mesh for the doorway */
-	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
+	UPROPERTY(VisibleDefaultsOnly)
 		class UStaticMeshComponent* PortalDoorway;
 
 	/** The camera perspective of the doorway */
-	UPROPERTY(VisibleDefaultsOnly, Category = Mesh)
+	UPROPERTY(VisibleDefaultsOnly)
 		class USceneCaptureComponent2D* PortalCapture;
 
 	// Called every frame
-	/*virtual void Tick(float DeltaTime) override;
+	//virtual void Tick(float DeltaTime) override;
 
 	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;*/
+	virtual void BeginPlay() override;
+
+	void PositionClippingPlane();
 };

@@ -1,5 +1,6 @@
 // Copyright 1998-2017 Epic Games, Inc. All Rights Reserved.
 #pragma once
+#include "PortalCode/EfficientPortal.h"
 #include "GameFramework/Character.h"
 #include "WarFantasyCharacter.generated.h"
 
@@ -29,6 +30,8 @@ class AWarFantasyCharacter : public ACharacter
 	/** First person camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FirstPersonCameraComponent;
+
+	AEfficientPortal* activePortal;
 
 	FRotator accumulatedRecoil, rotationSinceLastShot;
 
@@ -65,8 +68,8 @@ class AWarFantasyCharacter : public ACharacter
 	float postReloadIdleTimeCompensation = 0.2f;
 	int32 weaponMagazineCapacity = 30;
 	int32 roundsCurrentlyInMagazine;
-	FVector2D M4A1_RecoilAccuracy = FVector2D(-0.1f, 0.5f);
-	FVector2D M4A1_RecoilVariance = FVector2D(-0.2f, 1.f);
+	FVector2D M4A1_RecoilAccuracy = FVector2D(-0.1f, -0.5f);
+	FVector2D M4A1_RecoilVariance = FVector2D(-0.2f, -1.f);
 
 	/*
 		THESE ARE TWEAKABLE VALUES FOR COVER LEAN
@@ -236,6 +239,8 @@ public:
 	FORCEINLINE class USkeletalMeshComponent* GetMesh1P() const { return Mesh1P; }
 	/** Returns FirstPersonCameraComponent subobject **/
 	FORCEINLINE class UCameraComponent* GetFirstPersonCameraComponent() const { return FirstPersonCameraComponent; }
+
+	void GivePlayerPortalReference(AEfficientPortal* activePortal);
 
 	void lol();
 

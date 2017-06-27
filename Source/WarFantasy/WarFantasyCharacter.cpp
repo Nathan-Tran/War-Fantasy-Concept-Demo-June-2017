@@ -5,6 +5,7 @@
 #include "WarFantasyHUD.h"
 #include "ShellCasingProjectile.h"
 #include "Target.h"
+//#include "PortalCode/EfficientPortal.h"
 #include "Animation/AnimInstance.h"
 #include "GameFramework/InputSettings.h"
 
@@ -108,6 +109,8 @@ void AWarFantasyCharacter::Tick(float DeltaTime)
 	float currentFrameYawDelta = 0.f, currentFramePitchDelta = 0.f;
 	FVector currentFrameMovementDelta = FVector::ZeroVector;
 
+	activePortal->TeleportPlayerIfNecessary(DeltaTime);
+	
 	/*
 	Full Auto Fire Rate Code
 	*/
@@ -414,7 +417,6 @@ void AWarFantasyCharacter::FireBullet()
 		if (World != NULL)
 		{
 			const FRotator SpawnRotation = GetControlRotation() + FRotator(30.f, 0.f, 90.f);
-			// MuzzleOffset is in camera space, so transform it to world space before offsetting from the character location to find the final muzzle position
 			
 			// I don't think we need this redundency
 			//const FVector SpawnLocation = ((FP_WeaponBreachLocation != nullptr) ? FP_WeaponBreachLocation->GetComponentLocation() : GetActorLocation()) + SpawnRotation.RotateVector(GunOffset);
@@ -455,7 +457,7 @@ void AWarFantasyCharacter::FireBullet()
 
 	FCollisionQueryParams* traceParams = new FCollisionQueryParams();
 
-	DrawDebugLine(GetWorld(), startTrace, endTrace, FColor::Red, false, 50.0f);
+	//DrawDebugLine(GetWorld(), startTrace, endTrace, FColor::Red, false, 50.0f);
 
 	if (GetWorld()->LineTraceSingleByChannel(*bulletHit, startTrace, endTrace, ECC_Visibility, *traceParams)) 
 	{
@@ -688,6 +690,11 @@ void AWarFantasyCharacter::LookUpAtRate(float Rate)
 	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
 
+void AWarFantasyCharacter::GivePlayerPortalReference(AEfficientPortal* activePortalReference)
+{
+	this->activePortal = activePortalReference;
+}
+
 //TODO aim should be affected by velocity
 //TODO perhaps movement speeds depend on direction
 //TODO can only sprint forward
@@ -706,6 +713,8 @@ void AWarFantasyCharacter::LookUpAtRate(float Rate)
 //TODO for all lerp and interpto functions, deltatime must be implemented
 //TODO shell casing projection should inherit the player velocity
 //TODO depth of field effect
+//TODO reloading during automatic fire bug
+//TODO crouch improves accuracy
 
 void AWarFantasyCharacter::lol()
 {

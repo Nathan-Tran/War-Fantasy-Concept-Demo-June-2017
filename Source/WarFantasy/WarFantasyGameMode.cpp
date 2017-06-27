@@ -23,7 +23,7 @@ void AWarFantasyGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 
-	/*if (GEngine)
+	if (GEngine)
 	{
 		//TODO
 		UGameUserSettings* MyGameSettings = GEngine->GetGameUserSettings();
@@ -31,5 +31,6 @@ void AWarFantasyGameMode::BeginPlay()
 		MyGameSettings->SetFullscreenMode(EWindowMode::Fullscreen);
 		MyGameSettings->SetVSyncEnabled(true);
 		MyGameSettings->ApplySettings(false);
-	}*/
+		//See if you can disable the gpu buffer from here
+	}
 }

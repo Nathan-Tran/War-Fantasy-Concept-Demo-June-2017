@@ -13,12 +13,14 @@ class WARFANTASY_API AEfficientPortal : public APortalBaseClass
 {
 	GENERATED_BODY()
 
-	UPROPERTY(VisibleDefaultsOnly, Category = OtherPortalTransform)
-	class USceneComponent* PortalB;
-
 public:
 
 	AEfficientPortal();
+
+	void TeleportPlayerIfNecessary(float DeltaTime);
+
+	// Intended to be called only if ShouldTeleportPlayer returns true
+	FTransform GetNewPlayerTransform(FTransform currentPlayerTransform);
 
 protected:
 
@@ -29,6 +31,8 @@ protected:
 	virtual void BeginPlay() override;
 
 	void SwapPortalLocations();
+
+	//void TeleportPlayer(float DeltaTime);
 
 	void UpdatePortalView();
 };
