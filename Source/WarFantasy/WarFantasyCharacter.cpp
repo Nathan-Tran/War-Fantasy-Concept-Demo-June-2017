@@ -142,13 +142,13 @@ void AWarFantasyCharacter::Tick(float DeltaTime)
 
 		if (bAiming) 
 		{
-			pitchAdjust = FMath::FInterpTo(rotationSinceLastShot.Pitch, nextRecoilY * currentShotRecoilAmplifier, DeltaTime, 40.f);
-			yawAdjust = FMath::FInterpTo(rotationSinceLastShot.Yaw, nextRecoilX * currentShotRecoilAmplifier, DeltaTime, 40.f);
+			pitchAdjust = FMath::FInterpTo(rotationSinceLastShot.Pitch, (nextRecoilY / 1.8f) * currentShotRecoilAmplifier, DeltaTime, 40.f);
+			yawAdjust = FMath::FInterpTo(rotationSinceLastShot.Yaw, (nextRecoilX / 1.8f) * currentShotRecoilAmplifier, DeltaTime, 40.f);
 		}
 		else
 		{
-			pitchAdjust = FMath::FInterpTo(rotationSinceLastShot.Pitch, (nextRecoilY / 2.f) * currentShotRecoilAmplifier, DeltaTime, 40.f);
-			yawAdjust = FMath::FInterpTo(rotationSinceLastShot.Yaw, (nextRecoilX / 2.f) * currentShotRecoilAmplifier, DeltaTime, 40.f);
+			pitchAdjust = FMath::FInterpTo(rotationSinceLastShot.Pitch, (nextRecoilY / 1.2f) * currentShotRecoilAmplifier, DeltaTime, 40.f);
+			yawAdjust = FMath::FInterpTo(rotationSinceLastShot.Yaw, (nextRecoilX / 1.2f) * currentShotRecoilAmplifier, DeltaTime, 40.f);
 		}
 
 		float pitchRecoilThisFrame = pitchAdjust - rotationSinceLastShot.Pitch;
@@ -411,15 +411,13 @@ void AWarFantasyCharacter::FireBullet()
 	}
 
 	// try and fire a projectile
-	if (ShellCasing != NULL)
+	/*if (ShellCasing != NULL)
 	{
 		UWorld* const World = GetWorld();
 		if (World != NULL)
 		{
 			const FRotator SpawnRotation = GetControlRotation() + FRotator(30.f, 0.f, 90.f);
 			
-			// I don't think we need this redundency
-			//const FVector SpawnLocation = ((FP_WeaponBreachLocation != nullptr) ? FP_WeaponBreachLocation->GetComponentLocation() : GetActorLocation()) + SpawnRotation.RotateVector(GunOffset);
 			const FVector SpawnLocation = FP_WeaponBreachLocation->GetComponentLocation();
 
 			//Set Spawn Collision Handling Override
@@ -429,7 +427,7 @@ void AWarFantasyCharacter::FireBullet()
 			// spawn the projectile at the muzzle
 			World->SpawnActor<AShellCasingProjectile>(ShellCasing, SpawnLocation, SpawnRotation, ActorSpawnParams);
 		}
-	}
+	}*/
 
 	// try and play the sound if specified
 	if (FireSound != NULL)
@@ -457,11 +455,11 @@ void AWarFantasyCharacter::FireBullet()
 
 	FCollisionQueryParams* traceParams = new FCollisionQueryParams();
 
-	//DrawDebugLine(GetWorld(), startTrace, endTrace, FColor::Red, false, 50.0f);
+	DrawDebugLine(GetWorld(), startTrace, endTrace, FColor::Red, false, 50.0f);
 
 	if (GetWorld()->LineTraceSingleByChannel(*bulletHit, startTrace, endTrace, ECC_Visibility, *traceParams)) 
 	{
-		UE_LOG(LogTemp, Warning, TEXT("PEWWWW PEWWW Hit SOmething"));
+		//UE_LOG(LogTemp, Warning, TEXT("PEWWWW PEWWW Hit SOmething"));
 
 		ATarget* possibleTarget = Cast<ATarget>(bulletHit->Actor.Get());
 

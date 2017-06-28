@@ -13,8 +13,11 @@ class WARFANTASY_API ATarget : public AActor
 	float health = 100;
 
 	// The mesh for the target
-	UPROPERTY(EditAnywhere)
-	UStaticMeshComponent* targetMesh;
+	//(EditAnywhere, Category = Mesh)
+	//UStaticMeshComponent* targetMesh;
+
+	//UPROPERTY(EditAnywhere, Category = Material)
+	//UMaterialInterface* targetMaterial;
 
 protected:
 	// Called when the game starts or when spawned
@@ -25,12 +28,13 @@ public:
 	ATarget();
 
 	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	//virtual void Tick(float DeltaTime) override;
 
 	// Called when the target is damaged
 	void DamageTarget(float damage);
 
-	// Called on destruction of target
-	void DestroyTarget();
+	// Called when target is shot
+	UFUNCTION(BlueprintImplementableEvent)
+		void PlayTargetHitAnimation();
 	
 };

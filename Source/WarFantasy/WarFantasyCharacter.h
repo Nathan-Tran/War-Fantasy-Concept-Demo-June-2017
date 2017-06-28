@@ -64,7 +64,7 @@ class AWarFantasyCharacter : public ACharacter
 
 	float ignorePlayerRecoilCompensationTolerancePitch = 1.f; // These two values might map well to the recoil values themselves
 	float ignorePlayerRecoilCompensationToleranceYaw = 0.1f;
-	float firstShotRecoilAmplifier = 8.f;
+	float firstShotRecoilAmplifier = 6.f;
 	float postReloadIdleTimeCompensation = 0.2f;
 	int32 weaponMagazineCapacity = 30;
 	int32 roundsCurrentlyInMagazine;
@@ -213,9 +213,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
 		float BaseLookUpRate;
 
-	const float sprintSpeed = 900.f;
-	const float walkSpeed = 600.f;
-	const float crouchSpeed = 300.f;
+	const float sprintSpeed = 800.f;
+	const float walkSpeed = 450.f;
+	const float crouchSpeed = 250.f;
 	const float ADSWalkSpeed = 200.f;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Gameplay)

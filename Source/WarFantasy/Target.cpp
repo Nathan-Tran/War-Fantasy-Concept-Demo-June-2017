@@ -8,10 +8,11 @@
 ATarget::ATarget()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 
-	targetMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Target Mesh"));
-	RootComponent = targetMesh;
+	//targetMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Target Mesh"));
+	//targetMesh->SetMaterial(0, targetMaterial);
+	//RootComponent = targetMesh;
 
 }
 
@@ -22,11 +23,11 @@ void ATarget::BeginPlay()
 }
 
 // Called every frame
-void ATarget::Tick(float DeltaTime)
+/*void ATarget::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-}
+}*/
 
 // Called when the target is damaged
 void  ATarget::DamageTarget(float damage)
@@ -35,13 +36,12 @@ void  ATarget::DamageTarget(float damage)
 
 	if (health <= 0)
 	{
-		DestroyTarget();
+		PlayTargetHitAnimation();
 	}
 }
 
 // Called on destruction of target
-void  ATarget::DestroyTarget()
+/*void  ATarget::DestroyTarget()
 {
 	Destroy();
-}
-
+}*/
