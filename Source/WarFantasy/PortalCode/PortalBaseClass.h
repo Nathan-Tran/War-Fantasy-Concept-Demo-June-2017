@@ -29,7 +29,7 @@ protected:
 		class USceneComponent* PortalB;
 
 	/** The mesh for the doorway */
-	UPROPERTY(VisibleDefaultsOnly)
+	UPROPERTY(EditInstanceOnly)
 		class UStaticMeshComponent* PortalDoorway;
 
 	/** The camera perspective of the doorway */
@@ -43,4 +43,10 @@ protected:
 	virtual void BeginPlay() override;
 
 	void PositionClippingPlane();
+
+	UFUNCTION(BlueprintCallable)
+		void SetPortalBLocationAndRotation(FVector location, FRotator rotation);
+
+	UFUNCTION(BlueprintCallable)
+		void SetPortalScale(FVector portalScale, FVector portalLocation);
 };

@@ -120,7 +120,7 @@ void AWarFantasyCharacter::Tick(float DeltaTime)
 		if (timeUntilNextShot <= 0.f) 
 		{
 			FireBullet();
-			timeUntilNextShot = 0.075f; //TODO maybe this should just be "="
+			timeUntilNextShot = 0.065f;
 		}
 	}
 	else if (timeUntilNextShot > 0.f) 
@@ -403,9 +403,12 @@ void AWarFantasyCharacter::FireBullet()
 
 	if (roundsCurrentlyInMagazine == 0)
 	{
-		//TODO play empty chamber sounds
-		//TODO decide if I should force them to reload
-		UE_LOG(LogTemp, Warning, TEXT("Empty Mag"));
+		// try and play the sound if specified
+		if (DryFireSound != NULL)
+		{
+			UGameplayStatics::PlaySound2D(GetWorld(), DryFireSound, 2.0f);
+		}
+
 		bTriggerCurrentlyPulled = false;
 		return;
 	}
@@ -432,7 +435,7 @@ void AWarFantasyCharacter::FireBullet()
 	// try and play the sound if specified
 	if (FireSound != NULL)
 	{
-		UGameplayStatics::PlaySoundAtLocation(this, FireSound, GetActorLocation());
+		UGameplayStatics::PlaySound2D(GetWorld(), FireSound, gunShotVolumeMultiplier);
 	}
 
 	/*
@@ -455,7 +458,7 @@ void AWarFantasyCharacter::FireBullet()
 
 	FCollisionQueryParams* traceParams = new FCollisionQueryParams();
 
-	DrawDebugLine(GetWorld(), startTrace, endTrace, FColor::Red, false, 50.0f);
+	//DrawDebugLine(GetWorld(), startTrace, endTrace, FColor::Red, false, 50.0f);
 
 	if (GetWorld()->LineTraceSingleByChannel(*bulletHit, startTrace, endTrace, ECC_Visibility, *traceParams)) 
 	{
@@ -568,6 +571,12 @@ void AWarFantasyCharacter::OnReload()
 
 			if (roundsCurrentlyInMagazine > 0) roundsCurrentlyInMagazine = 1;
 			roundsCurrentlyInMagazine += weaponMagazineCapacity;
+		}
+
+		// try and play the sound if specified
+		if (ReloadSound != NULL)
+		{
+			UGameplayStatics::PlaySound2D(GetWorld(), ReloadSound, 2.f, 0.9f, 0.28f);
 		}
 	}
 
@@ -713,6 +722,7 @@ void AWarFantasyCharacter::GivePlayerPortalReference(AEfficientPortal* activePor
 //TODO depth of field effect
 //TODO reloading during automatic fire bug
 //TODO crouch improves accuracy
+//TODO moving should decrease aiming accuracy
 
 void AWarFantasyCharacter::lol()
 {

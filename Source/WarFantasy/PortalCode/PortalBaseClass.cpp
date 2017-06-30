@@ -80,3 +80,16 @@ void APortalBaseClass::PositionClippingPlane()
 	PortalCapture->ClipPlaneBase = (newRotationVector * -1.f) + PortalB->GetComponentLocation();
 }
 
+void APortalBaseClass::SetPortalBLocationAndRotation(FVector location, FRotator rotation)
+{
+	PortalB->SetWorldLocation(location);
+	PortalB->SetWorldRotation(rotation);
+	PositionClippingPlane();
+}
+
+void APortalBaseClass::SetPortalScale(FVector portalScale, FVector portalLocation)
+{
+	PortalDoorway->SetRelativeScale3D(portalScale);
+	PortalDoorway->SetRelativeLocation(portalLocation);
+	//PositionClippingPlane();
+}
